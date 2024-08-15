@@ -1,5 +1,6 @@
 .env
 vendor
+!resources/views/vendor
 # Ignore all files in public/upload
 public/upload/*
 !public/upload/**/
@@ -7,3 +8,6 @@ tmp
 .DS_Store
 public/robots.txt
 node_modules/
+storage/installed
+bootstrap/cache/packages.php
+bootstrap/cache/services.php

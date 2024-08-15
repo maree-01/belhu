@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "bb134cb1ec473695129906fff641b5f1",
+    "content-hash": "a9be988edc7d4c2ecc883866cb972dcb",
     "packages": [
         {
             "name": "akaunting/laravel-setting",
@@ -7396,7 +7396,7 @@
         },
         {
             "name": "pcinaglia/laraupdater",
-            "version": "dev-hubspot-integration",
+            "version": "dev-develop",
             "dist": {
                 "type": "path",
                 "url": "./packages/pcinaglia/laraupdater",
@@ -9501,7 +9501,7 @@
         },
         {
             "name": "rachidlaasri/laravel-installer",
-            "version": "dev-hubspot-integration",
+            "version": "dev-develop",
             "dist": {
                 "type": "path",
                 "url": "./packages/rachidlaasri/laravel-installer",
@@ -15308,16 +15308,16 @@
         },
         {
             "name": "laravel/sail",
-            "version": "v1.31.0",
+            "version": "v1.31.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laravel/sail.git",
-                "reference": "48d89608a3bb5be763c9bb87121d31e7da27c1cb"
+                "reference": "3d06dd18cee8059baa7b388af00ba47f6d96bd85"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laravel/sail/zipball/48d89608a3bb5be763c9bb87121d31e7da27c1cb",
-                "reference": "48d89608a3bb5be763c9bb87121d31e7da27c1cb",
+                "url": "https://api.github.com/repos/laravel/sail/zipball/3d06dd18cee8059baa7b388af00ba47f6d96bd85",
+                "reference": "3d06dd18cee8059baa7b388af00ba47f6d96bd85",
                 "shasum": ""
             },
             "require": {
@@ -15367,7 +15367,7 @@
                 "issues": "https://github.com/laravel/sail/issues",
                 "source": "https://github.com/laravel/sail"
             },
-            "time": "2024-07-22T14:36:50+00:00"
+            "time": "2024-08-02T07:45:47+00:00"
         },
         {
             "name": "maximebf/debugbar",
