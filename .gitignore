@@ -1,0 +1,9 @@
+.env
+vendor
+# Ignore all files in public/upload
+public/upload/*
+!public/upload/**/
+tmp
+.DS_Store
+public/robots.txt
+node_modules/
