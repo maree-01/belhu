@@ -16,7 +16,7 @@ return [
         'minPhpVersion' => '8.1.0',
     ],
     'final' => [
-        'key' => true,
+        'key'     => true,
         'publish' => false,
     ],
     'requirements' => [
@@ -51,9 +51,9 @@ return [
     |
     */
     'permissions' => [
-        'storage/framework/'     => '666',
-        'storage/logs/'          => '666',
-        'bootstrap/cache/'       => '666',
+        'storage/framework/' => '666',
+        'storage/logs/'      => '666',
+        'bootstrap/cache/'   => '666',
     ],
 
     /*
@@ -68,18 +68,18 @@ return [
     'environment' => [
         'form' => [
             'rules' => [
-                'app_name'              => 'required|string|max:50',
-                'environment'           => 'required|string|max:50',
-                'environment_custom'    => 'required_if:environment,other|max:50',
-                'app_debug'             => 'required|string',
-                'app_log_level'         => 'required|string|max:50',
-                'app_url'               => 'required|url',
-                'database_connection'   => 'required|string|max:50',
-                'database_hostname'     => 'required|string|max:50',
-                'database_port'         => 'required|numeric',
-                'database_name'         => 'required|string|max:50',
-                'database_username'     => 'required|string|max:50',
-                'database_password'     => 'nullable|string|max:50',
+                'app_name'            => 'required|string|max:50',
+                'environment'         => 'required|string|max:50',
+                'environment_custom'  => 'required_if:environment,other|max:50',
+                'app_debug'           => 'required|string',
+                'app_log_level'       => 'required|string|max:50',
+                'app_url'             => 'required|url',
+                'database_connection' => 'required|string|max:50',
+                'database_hostname'   => 'required|string|max:50',
+                'database_port'       => 'required|numeric',
+                'database_name'       => 'required|string|max:50',
+                'database_username'   => 'required|string|max:50',
+                'database_password'   => 'nullable|string|max:50',
             ],
         ],
     ],

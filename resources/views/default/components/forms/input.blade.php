@@ -1,9 +1,14 @@
+@props([
+	//When you send a class directly to the input, it doesn't reflect on the input itself. I wrote something like this to handle it; don't delete it.
+	'class' => $class ?? ''
+])
+
 @php
     $container_base_class = 'lqd-input-container relative';
     $input_base_class = 'lqd-input block peer w-full px-4 py-2 border border-input-border bg-input-background text-input-foreground text-base ring-offset-0 transition-colors
 		focus:border-secondary focus:outline-0 focus:ring focus:ring-secondary
 		dark:focus:ring-foreground/10
-		sm:text-2xs';
+		sm:text-2xs ' . $class;
     $input_checkbox_base_class = 'lqd-input peer rounded border-input-border
 		focus:ring focus:ring-secondary
 		dark:focus:ring-foreground/10';
@@ -52,6 +57,7 @@
 
 <div
     {{ $attributes->withoutTwMergeClasses()->twMergeFor('container', $attributes->get('class:container'), $container_base_class, $containerClass) }}
+    @if ($attributes->has('x-show')) x-show="{{ $attributes->get('x-show') }}" @endif
     @if ($type === 'password') x-data='{
 		type: "{{ $type }}",
 		get inputValueVisible() { return this.type !== "password" },
@@ -63,7 +69,11 @@
 		value: {{ !empty($value) ? $value : 0 }},
 		min: {{ $attributes->has('min') ? $attributes->get('min') : 0 }},
 		max: {{ $attributes->has('max') ? $attributes->get('max') : 999999 }},
-		step: {{ $attributes->has('step') ? $attributes->get('step') : 1 }}
+		step: {{ $attributes->has('step') ? $attributes->get('step') : 1 }},
+		setValue(value) {
+			this.value = value;
+			this.$refs.input.setAttribute("value", this.value);
+		}
 	}' @endif
     @if ($type === 'select' && $addNew) x-data="{ 'newOptions': [] }" @endif
 >
@@ -88,7 +98,7 @@
                 @endif
             @endif
 
-            <span class="lqd-input-label-txt">
+            <span {{ $attributes->twMergeFor('label-txt', 'lqd-input-label-txt') }}>
                 {{ $label }}
             </span>
 
@@ -125,7 +135,8 @@
             type={{ $type }}
             placeholder="{{ $placeholder }}"
             {{ $attributes }}
-            @if ($stepper) :value="(value).toString().includes('.') ? parseFloat(value).toFixed(2) : value" @endif
+            @if ($stepper) :value="(value).toString().includes('.') ? parseFloat(value).toFixed(2) : value"
+				x-ref="input" @endif
         />
 
         {{ $slot }}
@@ -282,9 +293,9 @@
     {{-- Stepper --}}
     @if ($stepper)
         <button
-            class="lqd-stepper-btn absolute start-0 top-0 inline-flex aspect-square h-full w-10 items-center justify-center rounded-input transition-colors hover:bg-heading-foreground hover:text-heading-background"
+            class="lqd-stepper-btn absolute start-0 top-0 inline-flex aspect-square h-full w-10 items-center justify-center rounded-s-input transition-colors hover:bg-heading-foreground hover:text-heading-background"
             type="button"
-            @click="value = Math.max(min, value - step)"
+            @click="setValue(Math.max(min, value - step))"
         >
             <x-tabler-minus
                 class="w-4"
@@ -292,9 +303,9 @@
             />
         </button>
         <button
-            class="lqd-stepper-btn absolute end-0 top-0 inline-flex aspect-square h-full w-10 items-center justify-center rounded-input transition-colors hover:bg-heading-foreground hover:text-heading-background"
+            class="lqd-stepper-btn absolute end-0 top-0 inline-flex aspect-square h-full w-10 items-center justify-center rounded-e-input transition-colors hover:bg-heading-foreground hover:text-heading-background"
             type="button"
-            @click="value = Math.min(max, value + step)"
+            @click="setValue(Math.min(max, value + step))"
         >
             <x-tabler-plus
                 class="w-4"

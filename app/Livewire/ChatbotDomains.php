@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace App\Livewire;
 
-use App\Models\Chatbot\Domain;
+use App\Models\Chatbot\Chatbot;
 use App\Rules\DomainRule;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
-use App\Models\Chatbot\Chatbot;
 
 class ChatbotDomains extends Component
 {
@@ -26,7 +25,7 @@ class ChatbotDomains extends Component
     public bool $addDomainButton = false;
 
     protected $listeners = [
-        'refreshDomains'     => 'setDomains',
+        'refreshDomains' => 'setDomains',
     ];
 
     public function mount(Chatbot $chatbot): void
@@ -85,7 +84,7 @@ class ChatbotDomains extends Component
         }
 
         $this->chatbot->domains()->create([
-            'domain' => $this->domain,
+            'domain'  => $this->domain,
             'app_key' => Str::uuid(),
         ]);
 

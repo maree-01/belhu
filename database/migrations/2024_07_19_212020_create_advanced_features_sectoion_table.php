@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::create('advanced_features_section', function (Blueprint $table) {
             $table->id();
-			$table->string('title');
-			$table->text('description');
-			$table->string('image');
+            $table->string('title');
+            $table->text('description');
+            $table->string('image');
             $table->timestamps();
         });
     }

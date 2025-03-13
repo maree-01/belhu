@@ -3,19 +3,14 @@
 @section('titlebar_actions', '')
 @section('titlebar_subtitle', __('Just choose your topic, and watch AI whip up SEO-optimized blog content in a matter of seconds!'))
 @section('titlebar_actions_before')
-    <div class="mb-4 flex w-full justify-end">
-        <x-remaining-credit
-            class="text-2xs"
-            legend-size="sm"
-            style="inline"
-            progress-height="sm"
-        />
+    <div class="flex w-full flex-wrap items-center gap-6 lg:justify-end">
+        <x-credit-list />
         <x-button
-            class="mx-6 group-[:not([data-step='1'],[data-step='2'],[data-step='3'])]/article-wizard:hidden"
+            class="reset-wizard-btn group-[:not([data-step='1'],[data-step='2'],[data-step='3'])]/article-wizard:hidden"
             variant="outline"
-            size="sm"
             onclick="resetWizard()"
         >
+            <x-tabler-refresh class="size-4" />
             {{ __('Start Over') }}
         </x-button>
 

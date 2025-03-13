@@ -20,7 +20,7 @@
     <div class="py-10">
         <div class="flex flex-col gap-9">
             @include('panel.admin.market.components.marketplace-filter')
-
+            
             <div class="lqd-extension-grid grid grid-cols-1 gap-7 md:grid-cols-2 lg:grid-cols-3">
                 @foreach ($extensions as $extension)
                     <x-card

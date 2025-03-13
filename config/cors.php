@@ -15,7 +15,7 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'oauth/*', 'sanctum/csrf-cookie', 'livewire/*', 'chatbot/*', 'themes/*', 'build/*', 'chatbot-assets/*'],
+    'paths' => ['api/*', 'vendor/chatbot/*', 'oauth/*', 'sanctum/csrf-cookie', 'livewire/*', 'chatbot/*', 'themes/*', 'build/*', 'chatbot-assets/*'],
 
     'allowed_methods' => ['*'],
 

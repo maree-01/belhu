@@ -2,7 +2,9 @@
 
 namespace App\Services\Extension\Traits;
 
+use App\Domains\Marketplace\Services\ExtensionUninstallService;
 use App\Models\Extension;
+use Exception;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -10,18 +12,27 @@ use Illuminate\Support\Facades\Schema;
 
 trait UninstallExtension
 {
-    public function uninstall(string $extensionSlug): bool|array
+    public function uninstall(string $extensionSlug, $newVersion = true, $uninstall = true): bool|array
     {
+        $responseExtension = $this->extensionRepository->find($extensionSlug);
+
+        $extensionFolderName = $responseExtension['extension_folder'];
+
+        if ($extensionFolderName && $this->extensionRepository->appVersion() >= 7.3 && $newVersion) {
+            return app(ExtensionUninstallService::class)
+                ->uninstall($extensionSlug);
+        }
+
         try {
             $this->extensionSlug = $extensionSlug;
 
-            $this->zipExtractPath = resource_path('extensions'.DIRECTORY_SEPARATOR.$extensionSlug);
+            $this->zipExtractPath = resource_path('extensions' . DIRECTORY_SEPARATOR . $extensionSlug);
 
             $this->getIndexJson();
 
             if (empty($this->indexJsonArray)) {
                 return [
-                    'status' => false,
+                    'status'  => false,
                     'message' => trans('index.json not found'),
                 ];
             }
@@ -32,7 +43,9 @@ trait UninstallExtension
 
             $this->deleteRoute();
 
-            $this->runUninstallQuery();
+            if ($uninstall) {
+                $this->runUninstallQuery();
+            }
 
             $this->deleteControllers();
 
@@ -40,10 +53,12 @@ trait UninstallExtension
 
             Artisan::call('optimize:clear');
 
-            Extension::query()->where('slug', $extensionSlug)
-                ->update([
-                    'installed' => 0,
-                ]);
+            if ($uninstall) {
+                Extension::query()->where('slug', $extensionSlug)
+                    ->update([
+                        'installed' => 0,
+                    ]);
+            }
 
             Artisan::call('cache:clear');
 
@@ -53,12 +68,12 @@ trait UninstallExtension
 
             return [
                 'success' => true,
-                'status' => true,
+                'status'  => true,
                 'message' => trans('Extension uninstalled successfully'),
             ];
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return [
-                'status' => false,
+                'status'  => false,
                 'message' => $e->getMessage(),
             ];
         }
@@ -88,7 +103,7 @@ trait UninstallExtension
             return;
         }
 
-        $routePath = base_path('routes/extroutes/'.basename($route));
+        $routePath = base_path('routes/extroutes/' . basename($route));
 
         if (File::exists($routePath)) {
             File::delete($routePath);
@@ -124,7 +139,7 @@ trait UninstallExtension
 
             $column = data_get($value, 'condition.column', null);
 
-            $sqlPath = $this->zipExtractPath.DIRECTORY_SEPARATOR.'migrations'.DIRECTORY_SEPARATOR.data_get($value, 'path');
+            $sqlPath = $this->zipExtractPath . DIRECTORY_SEPARATOR . 'migrations' . DIRECTORY_SEPARATOR . data_get($value, 'path');
 
             if (
                 Schema::hasTable($table)
@@ -163,6 +178,6 @@ trait UninstallExtension
     {
         $zipExtractPath = $zipExtractPath ?? $this->zipExtractPath;
 
-        return file_get_contents($zipExtractPath.DIRECTORY_SEPARATOR.'uninstall.sql');
+        return file_get_contents($zipExtractPath . DIRECTORY_SEPARATOR . 'uninstall.sql');
     }
 }

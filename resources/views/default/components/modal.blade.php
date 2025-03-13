@@ -4,7 +4,8 @@
     $modal_backdrop_base_class = 'lqd-modal-backdrop fixed inset-0 bg-black/5 backdrop-blur-sm';
     $modal_head_base_class = 'lqd-modal-head flex flex-wrap items-center gap-3 border-b px-4 py-2 relative';
     $modal_body_base_class = 'lqd-modal-body p-10';
-    $modal_content_base_class = 'lqd-modal-content relative z-[100] max-h-[95vh] min-w-[min(calc(100%-2rem),540px)] rounded-xl bg-background shadow-2xl shadow-black/10';
+    $modal_content_base_class =
+        'lqd-modal-content relative z-[100] max-h-[95vh] min-w-[min(calc(100%-2rem),540px)] rounded-xl bg-background shadow-2xl shadow-black/10 overflow-y-auto';
     $modal_close_btn_base_class = 'lqd-modal-close size-8 ms-auto inline-flex items-center justify-center rounded-lg transition-all hover:bg-foreground/20';
 
     if ($type !== 'inline') {
@@ -67,6 +68,7 @@
             x-transition
             @keyup.escape="modalOpen = false"
             :class="{ 'hidden': !modalOpen }"
+            @if (!$disableFocus) x-trap="modalOpen" @endif
         >
             <div {{ $attributes->twMergeFor('modal-backdrop', $modal_backdrop_base_class) }}></div>
 
@@ -82,6 +84,9 @@
                         @if (!empty($title))
                             <h4 class="my-0">{{ $title }}</h4>
                         @endif
+                        @if (!empty($headContent))
+                            {{ $headContent }}
+                        @endif
 
                         <button
                             {{ $attributes->twMergeFor('close-btn', $modal_close_btn_base_class) }}
@@ -96,14 +101,8 @@
             </div>
     @endif
 
-    <div
-        {{ $attributes->twMergeFor('modal-body', $modal_body_base_class) }}
-        x-trap.inert="modalOpen"
-    >
-        <div
-            class="container p-0"
-            @click.outside="modalOpen = false"
-        >
+    <div {{ $attributes->twMergeFor('modal-body', $modal_body_base_class) }}>
+        <div class="container p-0">
             {{ $modal }}
         </div>
     </div>

@@ -69,7 +69,7 @@
                                         $foundRevenueCatProduct = false;
                                         $revenueCatProduct = '';
                                     @endphp
-                                    @foreach ($entry->gateway_products as $prd)
+                                    @foreach ($entry->gatewayProducts as $prd)
                                         @if ($prd->gateway_code == 'revenuecat')
                                             @if ($prd->product_id != null)
                                                 {{ $prd->product_id }}
@@ -92,7 +92,7 @@
                                         $foundRevenueCatPrice = false;
                                         $revenueCatPrice = '';
                                     @endphp
-                                    @foreach ($entry->gateway_products as $prd)
+                                    @foreach ($entry->gatewayProducts as $prd)
                                         @if ($prd->gateway_code == 'revenuecat')
                                             @if ($prd->price_id != null)
                                                 {{ $prd->price_id }}

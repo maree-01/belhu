@@ -1,7 +1,7 @@
 <?php return array (
   'tabler' => 
   array (
-    '/Users/omar/Desktop/sites/Magicai/vendor/ryangjchandler/blade-tabler-icons/src/../resources/svg' => 
+    '/Users/omar/sites/Magicai/vendor/ryangjchandler/blade-tabler-icons/src/../resources/svg' => 
     array (
       0 => '12-hours',
       1 => '123',

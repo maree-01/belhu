@@ -358,13 +358,13 @@
         </figure>
     </div>
     <div class="content">
-        <div class="content-head">
-            <img src="{{$settings->site_url}}/images/mail/invite-head.jpg" alt="Invitation" width="1144" height="564">
+        <div class="content-head" style="background-color: transparent;">
+            <img src="{{$settings->site_url}}/images/mail/invite-head.jpg"  style="background-color: transparent;" alt="Invitation" width="1144" height="564">
         </div>
         <div class="content-contents">
             <div class="content-indent">
                 @php
-                    $template->content = str_replace( 
+                    $template->content = str_replace(
                         [
                             '{site_name}',
                             '{site_url}',

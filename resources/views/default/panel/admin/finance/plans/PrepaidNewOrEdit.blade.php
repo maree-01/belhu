@@ -101,56 +101,6 @@
                     required
                 />
 
-                <div class="mt-4 flex gap-2">
-                    <div class="w-1/2 w-full space-y-2">
-                        <x-forms.input
-                            class:container="w-full"
-                            id="display_word"
-                            label="{{ __('Total Words') }}"
-                            type="checkbox"
-                            name="display_word"
-                            :checked="(isset($subscription) && $subscription?->display_word_count) || !isset($subscription)"
-                            tooltip="{{ __('ON to display word count in plans') }}"
-                            switcher
-                        />
-
-                        <x-forms.input
-                            id="total_words"
-                            type="number"
-                            name="total_words"
-                            size="lg"
-                            value="{{ isset($subscription) ? $subscription->total_words : null }}"
-                        />
-                    </div>
-
-                    <div class="w-1/2 w-full space-y-2">
-                        <x-forms.input
-                            class:container="w-full"
-                            id="display_img"
-                            type="checkbox"
-                            name="display_img"
-                            label="{{ __('Total Images') }}"
-                            :checked="(isset($subscription) && $subscription?->display_imag_count) || !isset($subscription)"
-                            tooltip="{{ __('ON to display image count in plans') }}"
-                            switcher
-                        />
-
-                        <x-forms.input
-                            id="total_images"
-                            type="number"
-                            name="total_images"
-                            value="{{ isset($subscription) ? $subscription->total_images : null }}"
-                            size="lg"
-                        />
-                    </div>
-                </div>
-
-                <x-alert class="mt-1 w-full">
-                    <p>
-                        {{ __('Enter -1 for unlimited usage.') }}
-                    </p>
-                </x-alert>
-
                 <x-forms.input
                     class:container="w-full mt-4"
                     id="features"

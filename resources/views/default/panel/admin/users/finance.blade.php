@@ -1,7 +1,3 @@
-@php
-    $sub = getCurrentActiveSubscription($user->id) ?? getCurrentActiveSubscriptionYokkasa($user->id);
-@endphp
-
 @extends('panel.layout.settings')
 @section('title', __('Finance Management'))
 @section('titlebar_actions', '')
@@ -61,7 +57,7 @@
                 {{ __('Current Subscription') }}
                 <x-info-tooltip text="{{ __('Assign or delete user subscription.') }}" />
             </label>
-            @if ($sub != null)
+            @if ($sub !== null)
                 <svg
                     class="cursor-pointer"
                     data-bs-toggle="modal"
@@ -102,7 +98,7 @@
                 <input
                     class="form-control"
                     readonly
-                    value="{{ $sub->plan->name ?? __('No Active Subscription') }} {{ __('Plan') }}"
+                    value="{{ $plan->name ?? __('No Active Subscription') }} {{ __('Plan') }}"
                 >
                 <div
                     class="absolute right-3 top-[8px] cursor-pointer rounded-full border p-1"
@@ -167,9 +163,8 @@
                 >
                     <option value=""></option>
                     @foreach (getTokenPlans() ?? [] as $plan)
-                        <option value="{{ $plan->id }}"><b>{{ __($plan->name) . ' ' . __('Plan') }}</b>
-                            ({{ $plan->total_words . ' ' . __('word') }},
-                            {{ $plan->total_images . ' ' . __('image') }})
+                        <option value="{{ $plan->id }}">
+                            <b>{{ __($plan->name) . ' ' . __('Plan') }}</b>
                         </option>
                     @endforeach
                 </select>
@@ -277,9 +272,8 @@
                         >
                             <option value=""></option>
                             @foreach (getSubsPlans() ?? [] as $plan)
-                                <option value="{{ $plan->id }}"><b>{{ __($plan->name) . ' ' . __('Plan') }}</b>
-                                    ({{ $plan->total_words . ' ' . __('word') }},
-                                    {{ $plan->total_images . ' ' . __('image') }})
+                                <option value="{{ $plan->id }}">
+                                    <b>{{ __($plan->name) . ' ' . __('Plan') }}</b>
                                 </option>
                             @endforeach
                         </select>

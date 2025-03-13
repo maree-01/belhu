@@ -17,12 +17,6 @@
                         {{ __('Plan Name') }}
                     </th>
                     <th>
-                        {{ __('Words') }}
-                    </th>
-                    <th>
-                        {{ __('Images') }}
-                    </th>
-                    <th>
                         {{ __('Price') }}
                     </th>
                     <th>
@@ -75,12 +69,6 @@
                         </td>
                         <td>
                             {{ __(@$entry->plan->name ?? 'Archived') }}
-                        </td>
-                        <td>
-                            {{ @$entry->plan->total_words ?? '-' }}
-                        </td>
-                        <td>
-                            {{ @$entry->plan->total_images ?? '-' }}
                         </td>
                         <td>
                             @if (currencyShouldDisplayOnRight(currency()->symbol))

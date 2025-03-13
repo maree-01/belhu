@@ -6,16 +6,17 @@
     <form
         class="flex flex-col gap-10"
         id="custom_template_form"
-        onsubmit="return templateChatSave({{ $template != null ? $template->id : null }});"
+        action="{{route("dashboard.admin.openai.chat.save")}}"
+        method="POST"
         enctype="multipart/form-data"
     >
-
+        @csrf
         <div class="flex flex-col gap-5">
             <x-form-step
                 step="1"
                 label="{{ __('Template') }}"
             />
-
+            <input hidden="" name="template_id" value="{{$template ? $template->id : null}}">
             <x-forms.input
                 id="name"
                 name="name"
@@ -175,6 +176,19 @@
                 </select>
             </div>
 
+            <div class="mb-[20px]">
+                <label class="form-label" for="assistant">
+                    {{__('AI Assistants')}}
+                    <x-info-tooltip text="{{__('Choose your Openai Assistant. If you need to train a new chatbot, visit the Chatbot Training')}}" />
+                </label>
+                <select name="assistant" id="assistant" class="form-control">
+                    <option value="">Select Assistant</option>
+                    @foreach($assistants as $assistant)
+                        <option {{ $template?->assistant == $assistant["id"] ? 'selected': '' }} value="{{ $assistant["id"] }}" > {{ $assistant["name"] }} </option>
+                    @endforeach
+                </select>
+            </div>
+
             <div class="flex flex-col gap-3">
                 <div class="flex flex-wrap items-center gap-3">
                     <label>
@@ -194,12 +208,15 @@
 
                 <x-forms.input
                     id="chat_completions"
-                    name="chat_completions"
                     size="lg"
                     type="textarea"
                     rows="3"
                 >{{ $template != null ? $template->chat_completions : null }}</x-forms.input>
-
+                <textarea
+                        id="hidden_chat_completions"
+                        name="chat_completions"
+                        hidden=""
+                ></textarea>
                 <x-button
                     class="justify-start"
                     variant="link"
@@ -246,8 +263,11 @@
         }
     </style>
     <script>
-        var editor_chat_completions = ace.edit("chat_completions");
-        //editor.setTheme("ace/theme/monokai");
-        editor_chat_completions.session.setMode("ace/mode/json");
+		const editor_chat_completions = ace.edit('chat_completions');
+		editor_chat_completions.session.setMode("ace/mode/json");
+
+		$('#custom_template_form').submit(function(event) {
+			$('#hidden_chat_completions').val(editor_chat_completions.getValue());
+		});
     </script>
 @endpush

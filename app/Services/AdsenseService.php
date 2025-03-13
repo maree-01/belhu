@@ -4,8 +4,11 @@ use App\Models\Ad;
 
 function adsense($type)
 {
-    $adsense = Ad::where('type', $type)->where('status', true)->first();
-    return $adsense;
+    $adsenses = Ad::getCache(function () {
+        return Ad::query()->where('status', true)->get();
+    });
+
+    return $adsenses->where('type', $type)->first();
 }
 
 function adsense_header()

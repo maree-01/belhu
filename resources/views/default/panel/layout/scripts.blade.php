@@ -14,7 +14,9 @@
         !(route('dashboard.user.openai.generator.workbook', 'ai_vision') == url()->current()) &&
         !(route('dashboard.user.openai.generator.workbook', 'ai_chat_image') == url()->current()) &&
         !(route('dashboard.user.openai.generator.workbook', 'ai_pdf') == url()->current()))
-    @if (! Route::has('dashboard.user.openai.webchat.workbook') || (Route::has('dashboard.user.openai.webchat.workbook') && route('dashboard.user.openai.webchat.workbook') !== url()->current()))
+    @if (
+        !Route::has('dashboard.user.openai.webchat.workbook') ||
+            (Route::has('dashboard.user.openai.webchat.workbook') && route('dashboard.user.openai.webchat.workbook') !== url()->current()))
         <script src="{{ custom_theme_url('/assets/js/panel/openai_chatbot.js') }}"></script>
     @endif
 @endif
@@ -43,6 +45,9 @@
         missing_email: @json(__('Please enter your email address.')),
         missing_password: @json(__('Please enter your password.')),
         content_copied_to_clipboard: @json(__('Content copied to clipboard.')),
+        text_content_copied_to_clipboard: @json(__('Plain text content copied to clipboard.')),
+        md_content_copied_to_clipboard: @json(__('Markdown content copied to clipboard.')),
+        html_content_copied_to_clipboard: @json(__('HTML content copied to clipboard.')),
         new_chat_conversation_successfully: @json(__('New conversation created successfully.')),
         conversation_deleted_successfully: @json(__('Conversation deleted successfully.')),
         analyze_file_begin: @json(__('Analyzing uploaded file.')),

@@ -31,7 +31,7 @@
             </div>
         </div>
 
-        <div class="ms-auto flex text-center font-bold md:w-1/2 md:justify-end">
+        <div class="mx-auto flex text-center font-bold md:me-0 md:ms-auto md:w-1/2 md:justify-end">
             <div class="flex flex-col text-heading-foreground">
                 <p>
                     @lang('Team Members')

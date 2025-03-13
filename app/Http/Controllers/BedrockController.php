@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\BedrockEngine;
 use App\Services\Bedrock\BedrockRuntimeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,7 +17,7 @@ class BedrockController extends Controller
 
     public function generateClaude(Request $request): JsonResponse
     {
-        $prompt = $request->get("message");
+        $prompt = $request->get('message');
         $result = $this->bedrockService->invokeClaude($prompt);
 
         return response()->json($result);
@@ -33,5 +32,4 @@ class BedrockController extends Controller
 
         return response()->json(['image' => $image]);
     }
-
 }

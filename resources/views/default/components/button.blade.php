@@ -1,6 +1,6 @@
 @php
     $base_class =
-        'lqd-btn group inline-flex items-center justify-center gap-1.5 text-xs font-medium rounded-full transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/5 [&[disabled]]:bg-foreground [&[disabled]]:opacity-30 [&[disabled]]:pointer-events-none';
+        'lqd-btn group inline-flex items-center justify-center gap-1.5 text-xs font-medium rounded-full transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/5 disabled:bg-foreground/10 disabled:text-foreground/35 disabled:pointer-events-none';
 
     $variations = [
         'variant' => [
@@ -66,7 +66,7 @@
     {{ $attributes->withoutTwMergeClasses()->twMerge($base_class, $variant, $size, $hoverVariant, $attributes->get('class')) }}
     @if ($tag === 'a') href="{{ $href }}"
 @else
-	type="{{ $type }}" @endif
+    type="{{ $type }}" @endif
     {{ $attributes }}
 >
     {{ $slot }}

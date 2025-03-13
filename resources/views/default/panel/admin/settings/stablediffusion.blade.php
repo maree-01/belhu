@@ -1,6 +1,8 @@
+@php use App\Domains\Entity\Enums\EntityEnum; @endphp
 @extends('panel.layout.settings')
 @section('title', __('StableDiffusion Settings'))
 @section('titlebar_actions', '')
+@section('titlebar_subtitle', __('This API key is used for these features: AI Image, AI Article Wizard, Advanced Image Editor'))
 
 @section('additional_css')
     <link
@@ -26,12 +28,11 @@
                         type="checkbox"
                         name="stable_hidden"
                         :checked="setting('stable_hidden') == 1"
-                        label="{{ __('Hide StableDiffusion') }}"
+                        label="{{ __('Hide StableDiffusion from AI Image') }}"
                         switcher
                     />
                 </div>
             </div>
-            <!-- TODO stablediffusion API KEY -->
             @if ($app_is_demo)
                 <div class="col-md-12">
                     <div class="mb-3">
@@ -91,7 +92,7 @@
 
             <div class="col-md-12">
                 <div class="mb-3">
-                    <label class="form-label">{{ __('Default stablediffusion Language') }}</label>
+                    <label class="form-label">{{ __('Default StableDiffusion Language') }}</label>
                     <select
                         class="form-select"
                         id="stablediffusion_default_language"
@@ -279,94 +280,42 @@
                 </div>
             </div>
 
+
             <div class="col-md-12">
                 <div class="mb-3">
-                    <label class="form-label">{{ __('Stablediffusion default model') }}</label>
-                    <select
-                        class="form-select"
-                        id="stablediffusion_default_model"
-                        name="stablediffusion_default_model"
-                        onchange="toggleBedrockModel(this.value)"
-                    >
-                        <option
-                            value="stable-diffusion-xl-1024-v0-9"
-                            {{ $settings_two->stablediffusion_default_model == 'stable-diffusion-xl-1024-v0-9' ? 'selected' : null }}
-                        >
-                            {{ __('Stable Diffusion XL 0.9') }}</option>
-                        <option value="stable-diffusion-xl-1024-v1-0"{{ $settings_two->stablediffusion_default_model == 'stable-diffusion-xl-1024-v1-0' ? 'selected' : null }}>
-                            {{ __('Stable Diffusion XL 1.0') }}</option>
-                        <option
-                            value="stable-diffusion-v1-6"
-                            {{ $settings_two->stablediffusion_default_model == 'stable-diffusion-v1-6' ? 'selected' : null }}
-                        >
-                            {{ __('Stable Diffusion 1.6') }}</option>
-                        <option
-                            value="stable-diffusion-xl-beta-v2-2-2"
-                            {{ $settings_two->stablediffusion_default_model == 'stable-diffusion-xl-beta-v2-2-2' ? 'selected' : null }}
-                        >
-                            {{ __('Stable Diffusion 2.2.2 Beta') }}</option>
-
-                        <option
-                            value="sd3"
-                            {{ $settings_two->stablediffusion_default_model == 'sd3' ? 'selected' : null }}
-                        >
-                            {{ __('Stable Diffusion 3') }}</option>
-                        <option
-                            value="sd3-turbo"
-                            {{ $settings_two->stablediffusion_default_model == 'sd3-turbo' ? 'selected' : null }}
-                        >
-                            {{ __('Stable Diffusion 3 turbo') }}</option>
-                        <option
-                                value="{{\App\Enums\BedrockEngine::BEDROCK->value}}"
-                                {{ $settings_two->stablediffusion_default_model == \App\Enums\BedrockEngine::BEDROCK->value ? 'selected' : null }}
-                        >
-                            {{ __(\App\Enums\BedrockEngine::BEDROCK->label()) }}
-                        </option>
-                    </select>
+					@php
+						$stableDrivers = \App\Domains\Entity\EntityStats::image()
+							->filterByEngine(\App\Domains\Engine\Enums\EngineEnum::STABLE_DIFFUSION)
+							->list();
+						$sdmodel = $settings_two->stablediffusion_default_model;
+					@endphp
+					<x-model-select-list-with-change-alert :bedrock-options="true" :listLabel="'Default StableDiffusion Image Model'" :listId="'stablediffusion_default_model'" currentModel="{{ $sdmodel }}" :drivers="$stableDrivers" />
                 </div>
             </div>
 
-            <div class="col-md-12" id="stable_bedrock" style="display: none;">
+            <div
+                class="col-md-12"
+                id="stable_bedrock"
+                style="display: none;"
+            >
                 <div class="mb-3">
                     <label class="form-label">{{ __('Default AWS Bedrock Model') }}
                         <x-info-tooltip text="{{ __('To use Bedrock, you must first configure your AWS settings.') }}" />
                     </label>
                     <select
-                            class="form-select"
-                            id="stablediffusion_bedrock_model"
-                            name="stablediffusion_bedrock_model"
+                        class="form-select"
+                        id="stablediffusion_bedrock_model"
+                        name="stablediffusion_bedrock_model"
                     >
                         <option
-                                value="{{\App\Enums\BedrockEngine::STABLE_DIFFUSION_1->value}}"
-                                {{ $settings_two->stablediffusion_bedrock_model == \App\Enums\BedrockEngine::STABLE_DIFFUSION_1->value ? 'selected' : null }}
+                            value="{{ \App\Enums\BedrockEngine::STABLE_DIFFUSION_1->value }}"
+                            {{ $settings_two->stablediffusion_bedrock_model == \App\Enums\BedrockEngine::STABLE_DIFFUSION_1->value ? 'selected' : null }}
                         >
-                            {{ __(\App\Enums\BedrockEngine::STABLE_DIFFUSION_1->label()) }}
+                            {{ \App\Enums\BedrockEngine::STABLE_DIFFUSION_1->label() }}
                         </option>
                     </select>
                 </div>
             </div>
-
-            {{--
-			<div class="col-md-12">
-				<div class="mb-3">
-					<label class="form-label">{{__('Default Tone of Voice')}}</label>
-					<select class="form-select" name="stablediffusion_default_tone_of_voice" id="stablediffusion_default_tone_of_voice">
-						<option value="Professional" {{$setting->stablediffusion_default_tone_of_voice == 'Professional' ? 'selected' : null}}>{{__('Professional')}}</option>
-						<option value="Funny" {{$setting->openai_default_tone_of_voice == 'Funny' ? 'selected' : null}}>{{__('Funny')}}</option>
-						<option value="Casual" {{$setting->stablediffusion_default_tone_of_voice == 'Casual' ? 'selected' : null}}>{{__('Casual')}}</option>
-						<option value="Excited" {{$setting->stablediffusion_default_tone_of_voice == 'Excited' ? 'selected' : null}}>{{__('Excited')}}</option>
-						<option value="Witty" {{$setting->stablediffusion_default_tone_of_voice == 'Witty' ? 'selected' : null}}>{{__('Witty')}}</option>
-						<option value="Sarcastic" {{$setting->stablediffusion_default_tone_of_voice == 'Sarcastic' ? 'selected' : null}}>{{__('Sarcastic')}}</option>
-						<option value="Feminine" {{$setting->stablediffusion_default_tone_of_voice == 'Feminine' ? 'selected' : null}}>{{__('Feminine')}}</option>
-						<option value="Masculine" {{$setting->stablediffusion_default_tone_of_voice == 'Masculine' ? 'selected' : null}}>{{__('Masculine')}}</option>
-						<option value="Bold" {{$setting->stablediffusion_default_tone_of_voice == 'Bold' ? 'selected' : null}}>{{__('Bold')}}</option>
-						<option value="Dramatic" {{$setting->stablediffusion_default_tone_of_voice == 'Dramatic' ? 'selected' : null}}>{{__('Dramatic')}}</option>
-						<option value="Grumpy" {{$setting->stablediffusion_default_tone_of_voice == 'Grumpy' ? 'selected' : null}}>{{__('Grumpy')}}</option>
-						<option value="Secretive" {{$setting->stablediffusion_default_tone_of_voice == 'Secretive' ? 'selected' : null}}>{{__('Secretive')}}</option>
-					</select>
-				</div>
-			</div> --}}
-
         </div>
         <button
             class="btn btn-primary w-full"
@@ -379,22 +328,6 @@
 @endsection
 
 @push('script')
-
-    <script>
-        function toggleBedrockModel(value) {
-            const bedrockSelect = document.getElementById('stable_bedrock');
-            if (value === "aws_bedrock") {
-                bedrockSelect.style.display = 'block';
-            } else {
-                bedrockSelect.style.display = 'none';
-            }
-        }
-        document.addEventListener("DOMContentLoaded", function() {
-            const defaultModelSelect = document.getElementById('stablediffusion_default_model');
-            toggleBedrockModel(defaultModelSelect.value);
-        });
-    </script>
-
     <script src="{{ custom_theme_url('/assets/js/panel/settings.js') }}"></script>
     <script src="{{ custom_theme_url('/assets/libs/select2/select2.min.js') }}"></script>
 @endpush

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domains\Entity\Enums\EntityEnum;
 use App\Models\PdfData;
 use App\Models\Setting;
 use App\Models\SettingTwo;
@@ -24,8 +25,8 @@ class ChatPdfController extends Controller
     public function __construct()
     {
         //Settings
-        $this->settings = Setting::first();
-        $this->settings_two = SettingTwo::first();
+        $this->settings = Setting::getCache();
+        $this->settings_two = SettingTwo::getCache();
         if ($this->settings?->user_api_option) {
             $apiKeys = explode(',', auth()->user()?->api_keys);
         } else {
@@ -41,7 +42,7 @@ class ChatPdfController extends Controller
     {
         $pdf = $request->file('pdf');
         $pdf_content = file_get_contents($pdf->getRealPath());
-        $fileName = Str::random(12).'.pdf';
+        $fileName = Str::random(12) . '.pdf';
         Storage::disk('public')->put('temp.pdf', $pdf_content);
         Storage::disk('public')->put($fileName, $pdf_content);
 
@@ -49,13 +50,13 @@ class ChatPdfController extends Controller
 
         $resPath = "/uploads/$fileName";
 
-        if (SettingTwo::first()->ai_image_storage == 's3') {
+        if (SettingTwo::getCache()->ai_image_storage == 's3') {
             try {
                 $aws_path = Storage::disk('s3')->put('', $uploadedFile);
                 unlink(substr("/uploads/$fileName", 1));
                 $resPath = Storage::disk('s3')->url($aws_path);
-            } catch (\Exception $e) {
-                return response()->json(['status' => 'error', 'message' => 'AWS Error - '.$e->getMessage()]);
+            } catch (Exception $e) {
+                return response()->json(['status' => 'error', 'message' => 'AWS Error - ' . $e->getMessage()]);
             }
         }
 
@@ -64,7 +65,7 @@ class ChatPdfController extends Controller
         PdfData::where('chat_id', $chat_id)->delete();
 
         // $text = Pdf::getText('uploads/temp.pdf');
-        $parser = new \Smalot\PdfParser\Parser();
+        $parser = new \Smalot\PdfParser\Parser;
         $text = $parser->parseFile('uploads/temp.pdf')->getText();
 
         $page = $text;
@@ -82,13 +83,13 @@ class ChatPdfController extends Controller
                     $subtxt = mb_convert_encoding($subtxt, 'UTF-8', 'UTF-8');
                     $subtxt = iconv('UTF-8', 'UTF-8//IGNORE', $subtxt);
                     $response = OpenAI::embeddings()->create([
-                        'model' => 'text-embedding-ada-002',
+                        'model' => EntityEnum::TEXT_EMBEDDING_ADA_002->value,
                         'input' => $subtxt,
                     ]);
 
                     if (strlen(substr($page, 2000 * $i, strlen($page) - 2000 * $i)) > 10) {
 
-                        $chatpdf = new PdfData();
+                        $chatpdf = new PdfData;
 
                         $chatpdf->chat_id = $chat_id;
                         $chatpdf->content = substr($page, 2000 * $i, strlen($page) - 2000 * $i);
@@ -104,11 +105,11 @@ class ChatPdfController extends Controller
                     $subtxt = mb_convert_encoding($subtxt, 'UTF-8', 'UTF-8');
                     $subtxt = iconv('UTF-8', 'UTF-8//IGNORE', $subtxt);
                     $response = OpenAI::embeddings()->create([
-                        'model' => 'text-embedding-ada-002',
+                        'model' => EntityEnum::TEXT_EMBEDDING_ADA_002->value,
                         'input' => $subtxt,
                     ]);
                     if (strlen(substr($page, 2000 * $i, 4000)) > 10) {
-                        $chatpdf = new PdfData();
+                        $chatpdf = new PdfData;
 
                         $chatpdf->chat_id = $chat_id;
                         $chatpdf->content = substr($page, 2000 * $i, 4000);
@@ -134,7 +135,7 @@ class ChatPdfController extends Controller
             $count = 3;
         }
 
-        $vectorService = new VectorService();
+        $vectorService = new VectorService;
 
         return response()->json(['extra_prompt' => $vectorService->getMostSimilarText($request->prompt, $request->chat_id, $count)]);
     }

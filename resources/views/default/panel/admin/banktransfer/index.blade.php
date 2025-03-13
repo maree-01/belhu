@@ -26,7 +26,7 @@
                         {{ __('Info') }}
                     </th>
                     <th colspan="3">
-                        {{ __('Plan') }} / {{ __('Words') }} / {{ __('Images') }}
+                        {{ __('Plan') }} }}
                     </th>
                     <th class="text-end">
                         {{ __('Actions') }}
@@ -111,14 +111,6 @@
                         >
                             <span class="font-medium text-primary">
                                 {{ @$order->plan->name ?? __('Archived Plan') }}
-                            </span>
-                            /
-                            <span class="ms-1 text-heading-foreground">
-                                {{ @$order->plan->total_words === '-1' ? __('Unlimited') : @$order->plan->total_words ?? '-' }}
-                            </span>
-                            /
-                            <span class="ms-1 text-heading-foreground">
-                                {{ @$order->plan->total_images === '-1' ? __('Unlimited') : @$order->plan->total_images ?? '-' }}
                             </span>
                         </td>
                         <td class="whitespace-nowrap text-end">

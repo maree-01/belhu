@@ -20,7 +20,8 @@
 
 <div {{ $attributes->withoutTwMergeClasses()->twMerge($base_class, $attributes->get('class')) }}>
     <div @class([
-        'flex items-center justify-between gap-3 flex-wrap' => $style === 'inline',
+        'lqd-remaining-credits-legends flex items-center justify-between gap-3 flex-wrap' =>
+            $style === 'inline',
     ])>
         <x-legend
             class="{{ @twMerge($legend_text_base_class, $attributes->get('class:legend-text')) }}"

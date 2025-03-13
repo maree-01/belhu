@@ -2,16 +2,11 @@
 
 namespace Database\Seeders;
 
-use App\Models\Introduction;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\Extensions\Introduction;
 use Illuminate\Database\Seeder;
-use App\Models\SocialMediaAccounts;
 
 class IntroductionSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         $this->createAllIntroduction();
@@ -21,38 +16,38 @@ class IntroductionSeeder extends Seeder
     {
         $introductions = [
             [
-                'key' => 'initialize',
+                'key'   => 'initialize',
                 'intro' => "Welcome to MagicAI. Let's take a quick tour",
                 'order' => 1,
             ],
             [
-                'key' => 'ai_writer',
-                'intro' => "A great tool for using the Text Generator & AI Copywriting Assistant.",
+                'key'   => 'ai_writer',
+                'intro' => 'A great tool for using the Text Generator & AI Copywriting Assistant.',
                 'order' => 2,
             ],
             [
-                'key' => 'ai_image',
-                'intro' => "A great tool for using the Text Generator & AI Copywriting Assistant.",
+                'key'   => 'ai_image',
+                'intro' => 'A great tool for using the Text Generator & AI Copywriting Assistant.',
                 'order' => 3,
             ],
             [
-                'key' => 'ai_pdf',
-                'intro' => "Simply upload a PDF, find specific information. extract key insights or summarize the entire document.",
+                'key'   => 'ai_pdf',
+                'intro' => 'Simply upload a PDF, find specific information. extract key insights or summarize the entire document.',
                 'order' => 4,
             ],
             [
-                'key' => 'ai_code',
-                'intro' => "Generate high quality code in seconds.",
+                'key'   => 'ai_code',
+                'intro' => 'Generate high quality code in seconds.',
                 'order' => 5,
             ],
             [
-                'key' => 'select_plan',
-                'intro' => "Choose the plan that suits you and start creating right away.",
+                'key'   => 'select_plan',
+                'intro' => 'Choose the plan that suits you and start creating right away.',
                 'order' => 6,
             ],
             [
-                'key' => 'affiliate_send',
-                'intro' => "Invite your friends and start earning commissions.",
+                'key'   => 'affiliate_send',
+                'intro' => 'Invite your friends and start earning commissions.',
                 'order' => 7,
             ],
         ];
@@ -68,7 +63,7 @@ class IntroductionSeeder extends Seeder
             ->firstOrCreate([
                 'key' => $key,
             ], [
-                'key' => $key,
+                'key'   => $key,
                 'intro' => $intro,
                 'order' => $order,
             ]);

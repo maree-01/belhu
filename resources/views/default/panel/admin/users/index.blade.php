@@ -97,5 +97,5 @@
 @endsection
 @push('script')
     <script src="{{ custom_theme_url('/assets/js/panel/user.js') }}"></script>
-    @includeIf('panel.admin.settings.particles.affiliate-setting-script')
+    @includeFirst(['affilate::affiliate-setting-script', 'panel.admin.settings.particles.affiliate-setting-script', 'vendor.empty'])
 @endpush

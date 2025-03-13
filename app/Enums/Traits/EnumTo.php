@@ -6,11 +6,10 @@ namespace App\Enums\Traits;
 
 use App\Enums\Contracts\WithIntBackedEnum;
 use App\Enums\Contracts\WithStringBackedEnum;
-use App\Enums\ImageStorage;
 use Illuminate\Support\Arr;
 use Illuminate\View\ComponentAttributeBag;
-use InvalidArgumentException;
 use UnitEnum;
+
 trait EnumTo
 {
     public static function toArray(): array
@@ -18,7 +17,7 @@ trait EnumTo
         return array_column(static::cases(), 'value');
     }
 
-    public static function toOptions(string|int|WithIntBackedEnum|WithStringBackedEnum $selectedValue = '@none@', array $attributes = [], string $separator = PHP_EOL): string
+    public static function toOptions(null|string|int|WithIntBackedEnum|WithStringBackedEnum $selectedValue = '@none@', array $attributes = [], string $separator = PHP_EOL): string
     {
         if ($selectedValue instanceof UnitEnum) {
             $selectedValue = $selectedValue->value;
@@ -59,5 +58,4 @@ trait EnumTo
     {
         return (new ComponentAttributeBag($defaultAttrs))->merge($attributes);
     }
-
 }

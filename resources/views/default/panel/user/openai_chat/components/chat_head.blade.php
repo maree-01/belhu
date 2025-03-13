@@ -1,8 +1,8 @@
 <div
-    class="lqd-chat-head min-h-20 sticky -top-px z-30 flex items-center justify-between gap-2 rounded-se-[inherit] border-b bg-background/80 px-5 py-3 backdrop-blur-lg backdrop-saturate-150 max-md:bg-background/95 max-md:px-4">
+    class="lqd-chat-head sticky -top-px z-30 flex min-h-20 items-center justify-between gap-2 rounded-se-[inherit] border-b bg-background/80 px-5 py-3 backdrop-blur-lg backdrop-saturate-150 max-md:bg-background/95 max-md:px-4">
     <div class="flex shrink-0 gap-2">
         <div
-            class="text-foreground/65 size-11 inline-flex items-center justify-center overflow-hidden overflow-ellipsis whitespace-nowrap rounded-full text-2xs font-medium"
+            class="inline-flex size-11 items-center justify-center overflow-hidden overflow-ellipsis whitespace-nowrap rounded-full text-2xs font-medium text-foreground/65"
             style="background: {{ $category->color }};"
         >
             @if ($category->slug === 'ai-chat-bot')
@@ -39,13 +39,17 @@
 
     <div class="flex grow items-center justify-end gap-4">
         <div class="flex gap-2">
+            @includeFirst(['chat-share::share-button-include', 'panel.user.openai_chat.includes.share-button-include', 'vendor.empty'])
             @if (view()->hasSection('chat_head_actions'))
                 @yield('chat_head_actions')
             @else
+                @php
+                    $realtimeHiddenIn = ['ai_pdf', 'ai_vision', 'ai_chat_image'];
+                @endphp
                 <x-forms.input
                     class="max-md:hidden"
                     id="realtime"
-                    container-class="{{ $category->slug == 'ai_pdf' ? 'hidden' : '' }} max-md:size-8 max-md:inline-flex max-md:items-center max-md:justify-center max-md:overflow-hidden max-md:shadow-md max-md:rounded-full max-md:shrink-0 max-md:[&_.lqd-input-label-txt]:hidden"
+                    container-class="{{ in_array($category->slug, $realtimeHiddenIn, true) ? 'hidden' : 'flex' }} items-center max-md:size-8 max-md:inline-flex max-md:items-center max-md:justify-center max-md:overflow-hidden max-md:shadow-md max-md:rounded-full max-md:shrink-0 max-md:[&_.lqd-input-label-txt]:hidden"
                     label="{{ __('Real-Time Data') }}"
                     type="checkbox"
                     name="realtime"
@@ -53,7 +57,7 @@
                     switcher
                 >
                     <span
-                        class="size-8 inline-flex shrink-0 items-center justify-center rounded-full bg-background indent-0 text-heading-foreground transition-colors peer-checked:bg-primary peer-checked:text-primary-foreground md:hidden"
+                        class="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-background indent-0 text-heading-foreground transition-colors peer-checked:bg-primary peer-checked:text-primary-foreground md:hidden"
                     >
                         <x-tabler-world-download
                             class="size-5"
@@ -67,7 +71,7 @@
                 class="group relative inline-flex flex-row items-center justify-center self-center max-md:-order-1"
                 id="show_export_btns"
             >
-                <button class="max-md:size-8 max-md:inline-flex max-md:items-center max-md:justify-center max-md:rounded-full max-md:shadow-md">
+                <button class="max-md:inline-flex max-md:size-8 max-md:items-center max-md:justify-center max-md:rounded-full max-md:shadow-md">
                     <x-tabler-clipboard-copy
                         class="size-6"
                         stroke-width="1.5"
@@ -105,7 +109,7 @@
                 @yield('chat_sidebar_actions')
             @else
                 <x-button
-                    class="lqd-upload-doc-trigger size-8 group shrink-0 grid-flow-row place-items-center rounded-full shadow-md max-md:grid md:hidden"
+                    class="lqd-upload-doc-trigger group size-8 shrink-0 grid-flow-row place-items-center rounded-full shadow-md max-md:grid md:hidden"
                     variant="none"
                     size="none"
                     href="javascript:void(0);"
@@ -122,7 +126,7 @@
                 @if (isset($category) && $category->slug == 'ai_pdf')
                     {{-- #selectDocInput is present in chat_sidebar component. no need to duplicate it here --}}
                     <x-button
-                        class="lqd-upload-doc-trigger size-8 group shrink-0 grid-flow-row place-items-center rounded-full shadow-md max-md:grid md:hidden"
+                        class="lqd-upload-doc-trigger group size-8 shrink-0 grid-flow-row place-items-center rounded-full shadow-md max-md:grid md:hidden"
                         variant="none"
                         size="none"
                         href="javascript:void(0);"
@@ -135,7 +139,7 @@
                     </x-button>
                 @else
                     <x-button
-                        class="lqd-new-chat-trigger size-8 group shrink-0 grid-flow-row place-items-center rounded-full shadow-md max-md:grid md:hidden"
+                        class="lqd-new-chat-trigger group size-8 shrink-0 grid-flow-row place-items-center rounded-full shadow-md max-md:grid md:hidden"
                         variant="none"
                         size="none"
                         href="javascript:void(0);"
@@ -152,13 +156,13 @@
 
                 <div class="lqd-chat-mobile-sidebar-trigger self-center">
                     <button
-                        class="size-8 group shrink-0 grid-flow-row place-items-center rounded-full shadow-md max-md:grid md:hidden"
+                        class="group size-8 shrink-0 grid-flow-row place-items-center rounded-full shadow-md max-md:grid md:hidden"
                         :class="{ 'active': mobileSidebarShow }"
                         @click.prevent="toggleMobileSidebar()"
                         type="button"
                     >
-                        <x-tabler-dots class="size-5 col-start-1 row-start-1 transition-all group-[&.active]:rotate-45 group-[&.active]:scale-75 group-[&.active]:opacity-0" />
-                        <x-tabler-x class="size-4 col-start-1 row-start-1 -rotate-45 opacity-0 transition-all group-[&.active]:rotate-0 group-[&.active]:!opacity-100" />
+                        <x-tabler-dots class="col-start-1 row-start-1 size-5 transition-all group-[&.active]:rotate-45 group-[&.active]:scale-75 group-[&.active]:opacity-0" />
+                        <x-tabler-x class="col-start-1 row-start-1 size-4 -rotate-45 opacity-0 transition-all group-[&.active]:rotate-0 group-[&.active]:!opacity-100" />
                     </button>
                 </div>
             @endif

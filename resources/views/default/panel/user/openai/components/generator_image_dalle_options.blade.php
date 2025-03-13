@@ -1,4 +1,5 @@
 @php
+    use App\Domains\Entity\Enums\EntityEnum;
     $dalle_select_options = [
         'size' => [
             '256x256' => '256 x 256',
@@ -79,8 +80,7 @@
             'hd' => 'HD',
         ],
     ];
-
-    if ($settings_two->dalle === 'dalle3') {
+    if ($settings_two->dalle === EntityEnum::DALL_E_3->value) {
         $dalle_select_options['size'] = [
             '1024x1024' => '1024 x 1024',
             '1024x1792' => '1024 x 1792',
@@ -93,27 +93,27 @@
 @endphp
 
 <x-forms.input
-    class:label="text-heading-foreground font-medium"
-    id="size"
-    container-class="grow"
-    label="{{ __('Image resolution') }}"
-    @class([
-        'bg-background focus:ring-foreground/10',
-        'dall-e-2' => $settings_two->dalle == 'dalle2',
-        'dall-e-3' => $settings_two->dalle == 'dalle3',
-    ])
-    type="select"
-    name="size"
-    size="lg"
-    @change="if ( $app_is_demo && {{ $settings_two->dalle == 'dalle3' ? 1 : 0 }} && $event.target.value !== '1024x1024' ) {
+        class:label="text-heading-foreground font-medium"
+        id="size"
+        container-class="grow"
+        label="{{ __('Image resolution') }}"
+        @class([
+            'bg-background focus:ring-foreground/10',
+            EntityEnum::DALL_E_2->value => $settings_two->dalle === EntityEnum::DALL_E_2->value,
+            EntityEnum::DALL_E_3->value => $settings_two->dalle === EntityEnum::DALL_E_3->value,
+        ])
+        type="select"
+        name="size"
+        size="lg"
+        @change="if ( $app_is_demo && {{ $settings_two->dalle === EntityEnum::DALL_E_3 ? 1 : 0 }} && $event.target.value !== '1024x1024' ) {
 				toastr.info('{{ __('This feature is disabled in Demo version.') }}')
 				return $event.target.value = '1024x1024';
 			}"
 >
     @foreach ($dalle_select_options['size'] as $value => $label)
         <option
-            value="{{ $value }}"
-            @selected($loop->first)
+                value="{{ $value }}"
+                @selected($loop->first)
         >
             {{ __($label) }}
         </option>
@@ -121,19 +121,19 @@
 </x-forms.input>
 
 <x-forms.input
-    class="bg-background focus:ring-foreground/10"
-    class:label="text-heading-foreground font-medium"
-    id="image_style"
-    label="{{ __('Art Style') }}"
-    name="image_style"
-    container-class="grow"
-    size="lg"
-    type="select"
+        class="bg-background focus:ring-foreground/10"
+        class:label="text-heading-foreground font-medium"
+        id="image_style"
+        label="{{ __('Art Style') }}"
+        name="image_style"
+        container-class="grow"
+        size="lg"
+        type="select"
 >
     @foreach ($dalle_select_options['image_style'] as $value => $label)
         <option
-            value="{{ $value }}"
-            @selected($loop->first)
+                value="{{ $value }}"
+                @selected($loop->first)
         >
             {{ __($label) }}
         </option>
@@ -141,19 +141,19 @@
 </x-forms.input>
 
 <x-forms.input
-    class="bg-background focus:ring-foreground/10"
-    class:label="text-heading-foreground font-medium"
-    id="image_lighting"
-    label="{{ __('Lightning Style') }}"
-    name="image_lighting"
-    container-class="grow"
-    size="lg"
-    type="select"
+        class="bg-background focus:ring-foreground/10"
+        class:label="text-heading-foreground font-medium"
+        id="image_lighting"
+        label="{{ __('Lightning Style') }}"
+        name="image_lighting"
+        container-class="grow"
+        size="lg"
+        type="select"
 >
     @foreach ($dalle_select_options['image_lighting'] as $value => $label)
         <option
-            value="{{ $value }}"
-            @selected($loop->first)
+                value="{{ $value }}"
+                @selected($loop->first)
         >
             {{ __($label) }}
         </option>
@@ -161,19 +161,19 @@
 </x-forms.input>
 
 <x-forms.input
-    class="bg-background focus:ring-foreground/10"
-    class:label="text-heading-foreground font-medium"
-    id="image_mood"
-    label="{{ __('Mood') }}"
-    name="image_mood"
-    container-class="grow"
-    size="lg"
-    type="select"
+        class="bg-background focus:ring-foreground/10"
+        class:label="text-heading-foreground font-medium"
+        id="image_mood"
+        label="{{ __('Mood') }}"
+        name="image_mood"
+        container-class="grow"
+        size="lg"
+        type="select"
 >
     @foreach ($dalle_select_options['image_mood'] as $value => $label)
         <option
-            value="{{ $value }}"
-            @selected($loop->first)
+                value="{{ $value }}"
+                @selected($loop->first)
         >
             {{ __($label) }}
         </option>
@@ -181,23 +181,23 @@
 </x-forms.input>
 
 <x-forms.input
-    class:label="text-heading-foreground font-medium"
-    id="image_number_of_images"
-    @class([
-        'bg-background focus:ring-foreground/10',
-        'dall-e-2' => $settings_two->dalle == 'dalle2',
-        'dall-e-3' => $settings_two->dalle == 'dalle3',
-    ])
-    label="{{ __('Number of Images') }}"
-    name="image_number_of_images"
-    container-class="grow"
-    size="lg"
-    type="select"
+        class:label="text-heading-foreground font-medium"
+        id="image_number_of_images"
+        @class([
+            'bg-background focus:ring-foreground/10',
+            EntityEnum::DALL_E_2->value => $settings_two->dalle === EntityEnum::DALL_E_2->value,
+            EntityEnum::DALL_E_3->value => $settings_two->dalle === EntityEnum::DALL_E_3->value,
+        ])
+        label="{{ __('Number of Images') }}"
+        name="image_number_of_images"
+        container-class="grow"
+        size="lg"
+        type="select"
 >
     @foreach ($dalle_select_options['image_number_of_images'] as $value => $label)
         <option
-            value="{{ $value }}"
-            @selected($loop->first)
+                value="{{ $value }}"
+                @selected($loop->first)
         >
             {{ __($label) }}
         </option>
@@ -205,19 +205,19 @@
 </x-forms.input>
 
 <x-forms.input
-    class:label="text-heading-foreground font-medium"
-    class="dall-e-2 bg-background focus:ring-foreground/10"
-    id="image_quality"
-    label="{{ __('Quality of Images') }}"
-    name="image_quality"
-    container-class="grow"
-    size="lg"
-    type="select"
+        class:label="text-heading-foreground font-medium"
+        class="dall-e-2 bg-background focus:ring-foreground/10"
+        id="image_quality"
+        label="{{ __('Quality of Images') }}"
+        name="image_quality"
+        container-class="grow"
+        size="lg"
+        type="select"
 >
     @foreach ($dalle_select_options['image_quality'] as $value => $label)
         <option
-            value="{{ $value }}"
-            @selected($loop->first)
+                value="{{ $value }}"
+                @selected($loop->first)
         >
             {{ __($label) }}
         </option>

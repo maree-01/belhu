@@ -282,39 +282,6 @@ function menuSettingsSave() {
     return false;
 }
 
-function affiliateSettingsSave() {
-    "use strict";
-
-    document.getElementById("settings_button").disabled = true;
-    document.getElementById("settings_button").innerHTML = magicai_localize.please_wait;
-
-    var formData = new FormData();
-    formData.append('affiliate_minimum_withdrawal', $("#affiliate_minimum_withdrawal").val());
-    formData.append('affiliate_commission_percentage', $("#affiliate_commission_percentage").val());
-    $.ajax({
-        type: "post",
-        url: "/dashboard/admin/settings/affiliate-save",
-        data: formData,
-        contentType: false,
-        processData: false,
-        success: function (data) {
-            toastr.success(magicai_localize?.settings_saved ||'Settings saved succesfully')
-            document.getElementById("settings_button").disabled = false;
-            document.getElementById("settings_button").innerHTML = "Save";
-        },
-        error: function (data) {
-            var err = data.responseJSON.errors;
-            $.each(err, function (index, value) {
-                toastr.error(value);
-            });
-            document.getElementById("settings_button").disabled = false;
-            document.getElementById("settings_button").innerHTML = "Save";
-        }
-    });
-    return false;
-}
-
-
 function generalSettingsSave() {
     "use strict";
 
@@ -328,7 +295,9 @@ function generalSettingsSave() {
     formData.append('register_active', $("#register_active").val());
     formData.append('login_with_otp', $("#login_with_otp").val());
     formData.append('tour_seen', $("#tour_seen").val());
-    formData.append('free_plan', $("#free_plan").val());
+
+    collectCreditsToFormData(formData);
+
     formData.append('default_country', $("#default_country").val());
     formData.append('default_currency', $("#default_currency").val());
     formData.append('default_ai_engine', $("#default_ai_engine").val());
@@ -368,51 +337,31 @@ function generalSettingsSave() {
     formData.append('metaTitleLocal', $("#metaTitleLocal").val());
     formData.append('metaDescLocal', $("#metaDescLocal").val());
 
-    if ($('#logo').val() != 'undefined') {
-        formData.append('logo', $('#logo').prop('files')[0]);
-    }
-    if ($('#logo_dark').val() != 'undefined') {
-        formData.append('logo_dark', $('#logo_dark').prop('files')[0]);
-    }
-    if ($('#logo_sticky').val() != 'undefined') {
-        formData.append('logo_sticky', $('#logo_sticky').prop('files')[0]);
-    }
-    if ($('#logo_dashboard').val() != 'undefined') {
-        formData.append('logo_dashboard', $('#logo_dashboard').prop('files')[0]);
-    }
-    if ($('#logo_dashboard_dark').val() != 'undefined') {
-        formData.append('logo_dashboard_dark', $('#logo_dashboard_dark').prop('files')[0]);
-    }
-    if ($('#logo_collapsed').val() != 'undefined') {
-        formData.append('logo_collapsed', $('#logo_collapsed').prop('files')[0]);
-    }
-    if ($('#logo_collapsed_dark').val() != 'undefined') {
-        formData.append('logo_collapsed_dark', $('#logo_collapsed_dark').prop('files')[0]);
-    }
-    if ($('#logo_2x').val() != 'undefined') {
-        formData.append('logo_2x', $('#logo_2x').prop('files')[0]);
-    }
-    if ($('#logo_dark_2x').val() != 'undefined') {
-        formData.append('logo_dark_2x', $('#logo_dark_2x').prop('files')[0]);
-    }
-    if ($('#logo_sticky_2x').val() != 'undefined') {
-        formData.append('logo_sticky_2x', $('#logo_sticky_2x').prop('files')[0]);
-    }
-    if ($('#logo_dashboard_2x').val() != 'undefined') {
-        formData.append('logo_dashboard_2x', $('#logo_dashboard_2x').prop('files')[0]);
-    }
-    if ($('#logo_dashboard_dark_2x').val() != 'undefined') {
-        formData.append('logo_dashboard_dark_2x', $('#logo_dashboard_dark_2x').prop('files')[0]);
-    }
-    if ($('#logo_collapsed_2x').val() != 'undefined') {
-        formData.append('logo_collapsed_2x', $('#logo_collapsed_2x').prop('files')[0]);
-    }
-    if ($('#logo_collapsed_dark_2x').val() != 'undefined') {
-        formData.append('logo_collapsed_dark_2x', $('#logo_collapsed_dark_2x').prop('files')[0]);
-    }
-    if ($('#favicon').val() != 'undefined') {
-        formData.append('favicon', $('#favicon').prop('files')[0]);
-    }
+    const logoFields = [
+        'logo',
+        'logo_dark',
+        'logo_sticky',
+        'logo_dashboard',
+        'logo_dashboard_dark',
+        'logo_collapsed',
+        'logo_collapsed_dark',
+        'logo_2x',
+        'logo_dark_2x',
+        'logo_sticky_2x',
+        'logo_dashboard_2x',
+        'logo_dashboard_dark_2x',
+        'logo_collapsed_2x',
+        'logo_collapsed_dark_2x',
+        'favicon'
+    ];
+
+    logoFields.forEach(field => {
+        const fileInput = $(`#${field}`);
+        if (fileInput.val() !== 'undefined') {
+            formData.append(field, fileInput.prop('files')[0]);
+        }
+    });
+
 
     formData.append('google_analytics_code', $("#google_analytics_code").val());
     formData.append('meta_title', $("#meta_title").val());
@@ -447,12 +396,15 @@ function generalSettingsSave() {
     formData.append('feature_ai_rewriter', $("#feature_ai_rewriter").is(":checked") ? 1 : 0);
     formData.append('feature_ai_voice_clone', $("#feature_ai_voice_clone").is(":checked") ? 1 : 0)
     formData.append('user_prompt_library', $("#user_prompt_library").is(":checked") ? 1 : 0)
+    formData.append('select_model_option', $("#select_model_option").is(":checked") ? 1 : 0)
     formData.append('user_ai_image_prompt_library', $("#user_ai_image_prompt_library").is(":checked") ? 1 : 0)
 	formData.append('ai_voice_isolator', $("#ai_voice_isolator").is(":checked") ? 1 : 0)
     formData.append('user_ai_writer_custom_templates', $("#user_ai_writer_custom_templates").is(":checked") ? 1 : 0)
     formData.append('chat_setting_for_customer', $("#chat_setting_for_customer").is(":checked") ? 1 : 0)
     formData.append('photo_studio', $("#photo_studio").is(":checked") ? 1 : 0)
 
+    formData.append('mrrobot_name', $("#mrrobot_name").val());
+    formData.append('mrrobot_search_words', $("#mrrobot_search_words").val());
 
     $.ajax({
         type: "post",
@@ -496,48 +448,6 @@ function introductionSettingsSave() {
         processData: false,
         success: function (data) {
             toastr.success(magicai_localize?.settings_saved || 'Introductions saved successfully');
-            document.getElementById("settings_button").disabled = false;
-            document.getElementById("settings_button").innerHTML = "Save";
-        },
-        error: function (data) {
-            var err = data.responseJSON.errors;
-            $.each(err, function (index, value) {
-                toastr.error(value);
-            });
-            document.getElementById("settings_button").disabled = false;
-            document.getElementById("settings_button").innerHTML = "Save";
-        }
-    });
-    return false;
-}
-
-
-
-function invoiceSettingsSave() {
-    "use strict";
-
-    document.getElementById("settings_button").disabled = true;
-    document.getElementById("settings_button").innerHTML = magicai_localize.please_wait;
-
-    var formData = new FormData();
-    formData.append('invoice_name', $("#invoice_name").val());
-    formData.append('invoice_website', $("#invoice_website").val());
-    formData.append('invoice_address', $("#invoice_address").val());
-    formData.append('invoice_city', $("#invoice_city").val());
-    formData.append('invoice_state', $("#invoice_state").val());
-    formData.append('invoice_postal', $("#invoice_postal").val());
-    formData.append('invoice_country', $("#invoice_country").val());
-    formData.append('invoice_phone', $("#invoice_phone").val());
-    formData.append('invoice_vat', $("#invoice_vat").val());
-
-    $.ajax({
-        type: "post",
-        url: "/dashboard/admin/settings/invoice-save",
-        data: formData,
-        contentType: false,
-        processData: false,
-        success: function (data) {
-            toastr.success(magicai_localize?.settings_saved ||'Settings saved succesfully')
             document.getElementById("settings_button").disabled = false;
             document.getElementById("settings_button").innerHTML = "Save";
         },
@@ -608,6 +518,8 @@ function openaiSettingsSave() {
 	formData.append('hide_creativity_option', $("#hide_creativity_option").is(":checked") ? 1 : 0);
 	formData.append('hide_tone_of_voice_option', $("#hide_tone_of_voice_option").is(":checked") ? 1 : 0);
 	formData.append('hide_output_length_option', $("#hide_output_length_option").is(":checked") ? 1 : 0);
+    formData.append('dalle_hidden', $("#dalle_hidden").is(":checked") ? 1 : 0);
+    formData.append('realtime_voice_chat', $("#realtime_voice_chat").is(":checked") ? 1 : 0);
 
     $.ajax({
         type: "post",
@@ -709,7 +621,7 @@ function stablediffusionSettingsSave() {
     document.getElementById("settings_button").disabled = true;
     document.getElementById("settings_button").innerHTML = magicai_localize.please_wait;
 
-    var formData = new FormData();stable_hidden
+    var formData = new FormData();
     formData.append('stable_diffusion_api_key', $("#stable_diffusion_api_key").val());
     formData.append('stable_hidden', $("#stable_hidden").is(":checked") ? 1 : 0);
     formData.append('stablediffusion_default_language', $("#stablediffusion_default_language").val());
@@ -785,6 +697,39 @@ function pebblelySettingsSave() {
     $.ajax({
         type: "post",
         url: "/dashboard/admin/settings/pebblely-save",
+        data: formData,
+        contentType: false,
+        processData: false,
+        success: function (data) {
+            toastr.success(magicai_localize?.settings_saved ||'Settings saved succesfully')
+            document.getElementById("settings_button").disabled = false;
+            document.getElementById("settings_button").innerHTML = "Save";
+        },
+        error: function (data) {
+            var err = data.responseJSON.errors;
+            $.each(err, function (index, value) {
+                toastr.error(value);
+            });
+            document.getElementById("settings_button").disabled = false;
+            document.getElementById("settings_button").innerHTML = "Save";
+        }
+    });
+    return false;
+}
+
+function aimlapiSettingsSave() {
+    "use strict";
+
+    document.getElementById("settings_button").disabled = true;
+    document.getElementById("settings_button").innerHTML = magicai_localize.please_wait;
+
+    var formData = new FormData();
+    formData.append('aimlapi_key', $("#aimlapi_key").val());
+    formData.append('ai_music_model', $("#ai_music_model").val());
+
+    $.ajax({
+        type: "post",
+        url: "/dashboard/admin/settings/aimlapi-save",
         data: formData,
         contentType: false,
         processData: false,
@@ -1090,40 +1035,6 @@ function smtpSettingsSave() {
     return false;
 }
 
-function gdprSettingsSave() {
-    "use strict";
-
-    document.getElementById("settings_button").disabled = true;
-    document.getElementById("settings_button").innerHTML = magicai_localize.please_wait;
-
-    var formData = new FormData();
-    formData.append('gdpr_status', $("#gdpr_status").is(":checked") ? 1 : 0);
-    formData.append('gdpr_button', $("#gdpr_button").val());
-    formData.append('gdpr_content', $("#gdpr_content").val());
-
-    $.ajax({
-        type: "post",
-        url: "/dashboard/admin/settings/gdpr-save",
-        data: formData,
-        contentType: false,
-        processData: false,
-        success: function (data) {
-            toastr.success(magicai_localize?.settings_saved ||'Settings saved succesfully')
-            document.getElementById("settings_button").disabled = false;
-            document.getElementById("settings_button").innerHTML = "Save";
-        },
-        error: function (data) {
-            var err = data.responseJSON.errors;
-            $.each(err, function (index, value) {
-                toastr.error(value);
-            });
-            document.getElementById("settings_button").disabled = false;
-            document.getElementById("settings_button").innerHTML = "Save";
-        }
-    });
-    return false;
-}
-
 function privacySettingsSave() {
     "use strict";
 
@@ -1354,38 +1265,6 @@ function generatorlistCreateOrUpdate(item_id) {
             });
             document.getElementById("item_button").disabled = false;
             document.getElementById("item_button").innerHTML = "Save";
-        }
-    });
-    return false;
-}
-
-function imageStorageSettingsSave() {
-    "use strict";
-
-    document.getElementById("settings_button").disabled = true;
-    document.getElementById("settings_button").innerHTML = magicai_localize.please_wait;
-
-    var formData = new FormData();
-    formData.append('ai_image_storage', $("#ai_image_storage").val());
-
-    $.ajax({
-        type: "post",
-        url: "/dashboard/admin/settings/storage-save",
-        data: formData,
-        contentType: false,
-        processData: false,
-        success: function (data) {
-            toastr.success(magicai_localize?.settings_saved ||'Settings saved succesfully')
-            document.getElementById("settings_button").disabled = false;
-            document.getElementById("settings_button").innerHTML = "Save";
-        },
-        error: function (data) {
-            var err = data.responseJSON.errors;
-            $.each(err, function (index, value) {
-                toastr.error(value);
-            });
-            document.getElementById("settings_button").disabled = false;
-            document.getElementById("settings_button").innerHTML = "Save";
         }
     });
     return false;

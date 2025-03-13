@@ -121,6 +121,10 @@ input::file-selector-button {
 }
 
 .form-label {
+	display: flex;
+	gap: 0.25rem;
+	align-items: center;
+	flex-wrap: wrap;
 	margin-bottom: 0.6rem;
 
 	.lqd-tooltip-container {
@@ -196,6 +200,7 @@ input::file-selector-button {
 		align-items: center;
 		flex-wrap: wrap;
 		background: none;
+        overflow: auto;
 
 		.select2-selection__rendered {
 			display: flex;
@@ -287,6 +292,10 @@ input::file-selector-button {
 	.form-selectgroup-input:checked+.form-selectgroup-label {
 		background: hsl(var(--primary));
 	}
+}
+
+.form-input-stepper {
+	@apply lqd-input-stepper appearance-none text-center px-2;
 }
 
 .lqd-input-stepper::-webkit-outer-spin-button,

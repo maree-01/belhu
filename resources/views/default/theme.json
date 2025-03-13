@@ -20,6 +20,7 @@
 	},
 	"dashboard": {
 		"supportedColorSchemes": "all",
+		"sidebarEnabledPages": [],
 		"googleFonts": {
 			"Inter": [
 				"400",

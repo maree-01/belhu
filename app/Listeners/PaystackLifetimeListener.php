@@ -3,20 +3,28 @@
 namespace App\Listeners;
 
 use App\Actions\CreateActivity;
+use App\Enums\Plan\FrequencyEnum;
+use App\Events\PaystackLifetimeEvent;
+use App\Models\UserOrder;
+use App\Services\PaymentGateways\Contracts\CreditUpdater;
+use Carbon\Carbon;
+use Exception;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
-use App\Events\PaystackLifetimeEvent;
 use Illuminate\Support\Facades\Log;
 use Laravel\Cashier\Subscription as Subscriptions;
-use App\Models\UserOrder;
 
-class PaystackLifetimeListener
+class PaystackLifetimeListener implements ShouldQueue
 {
-	use InteractsWithQueue;
-    public $afterCommit = true;
+    use CreditUpdater;
+    use InteractsWithQueue;
 
-    public $queue = 'default';
-    public $delay = 0;
+    public bool $afterCommit = true;
+
+    public string $queue = 'default';
+
+    public int $delay = 0;
+
     /**
      * Create the event listener.
      */
@@ -30,37 +38,32 @@ class PaystackLifetimeListener
      */
     public function handle(PaystackLifetimeEvent $event): void
     {
-         try{
+        try {
             $status = $event->status;
             $order_ids = $event->orderIds;
-            # 1. stripe_approved
-            if($status == 'paystack_approved'){
+            // 1. paystack_approved
+            if ($status === 'paystack_approved') {
                 $orders = UserOrder::whereIn('order_id', $order_ids)->get();
                 foreach ($orders as $order) {
                     switch ($order->plan->frequency) {
-                        case 'lifetime_monthly':
-                            Subscriptions::where('stripe_id', $order->order_id) ->update(['stripe_status' => $status, 'ends_at' => \Carbon\Carbon::now()->addMonths(1)]);
-                            $msg= __('Subscription renewed for 1 month.');
-                            break;
-                        case 'lifetime_yearly':
-                            Subscriptions::where('stripe_id', $order->order_id) ->update(['stripe_status' => $status, 'ends_at' => \Carbon\Carbon::now()->addYears(1)]);
-                            $msg= __('Subscription renewed for 1 year.');
+                        case FrequencyEnum::LIFETIME_YEARLY->value :
+                            Subscriptions::where('stripe_id', $order->order_id)->update(['stripe_status' => $status, 'ends_at' => Carbon::now()->addYears(1)]);
+                            $msg = __('Subscription renewed for 1 year.');
+
                             break;
                         default:
-                            Subscriptions::where('stripe_id', $order->order_id) ->update(['stripe_status' => $status, 'ends_at' => \Carbon\Carbon::now()->addMonths(1)]);
-                            $msg= __('Subscription renewed for 1 month.');
+                            //FrequencyEnum::LIFETIME_MONTHLY->value
+                            Subscriptions::where('stripe_id', $order->order_id)->update(['stripe_status' => $status, 'ends_at' => Carbon::now()->addMonths(1)]);
+                            $msg = __('Subscription renewed for 1 month.');
+
                             break;
                     }
-                    # all old tokens deleted
-                    $order->plan->total_words == -1? ($order->user->remaining_words = -1) : ($order->user->remaining_words = $order->plan->total_words);
-                    $order->plan->total_images == -1? ($order->user->remaining_images = -1) : ($order->user->remaining_images = $order->plan->total_images);
-                    $order->user->save();
-                    # sent mail if required here later
-                    CreateActivity::for($order->user, $msg, $order->plan->name. ' '. __('Plan'));
+                    self::creditIncreaseSubscribePlan($order->user, $order->plan);
+                    CreateActivity::for($order->user, $msg, $order->plan->name . ' ' . __('Plan'));
                 }
             }
-        }catch(\Exception $ex){
-            Log::error("PaystackLifetimeListener::handle()\n".$ex->getMessage());
+        } catch (Exception $ex) {
+            Log::error("PaystackLifetimeListener::handle()\n" . $ex->getMessage());
         }
     }
 }

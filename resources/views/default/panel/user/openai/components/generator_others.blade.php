@@ -35,10 +35,7 @@
                 {{ __('Remaining Credits') }}
             </h5>
 
-            <x-remaining-credit
-                class="text-xs"
-                style="inline"
-            />
+            <x-credit-list />
         </x-card>
 
         @if ($openai->type != 'image')
@@ -121,9 +118,10 @@
                                 label="{{ __('Maximum Length') }}"
                                 name="maximum_length"
                                 type="number"
-                                max="{{ Auth::user()->remaining_words }}"
                                 placeholder="{{ __('Maximum character length of text') }}"
                                 required
+								min="1"
+								step="1"
                             />
                         @endif
 
@@ -193,9 +191,10 @@
                             type="number"
                             label="{{ __('Number of Results') }}"
                             name="number_of_results"
-                            value="1"
                             placeholder="{{ __('Maximum character length of text') }}"
                             required
+							min="1"
+							value="1"
                         />
                     @endif
 

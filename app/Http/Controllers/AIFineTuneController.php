@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domains\Entity\Enums\EntityEnum;
 use App\Helpers\Classes\Helper;
 use App\Models\Setting;
 use App\Models\SettingTwo;
@@ -18,9 +19,9 @@ class AIFineTuneController extends Controller
             return response()->json(__('This feature is disabled in Demo version.'), 419);
         }
 
-        $title = ! empty($_POST['title']) ? $_POST['title'] : 'model-'.Str::random(7);
+        $title = ! empty($_POST['title']) ? $_POST['title'] : 'model-' . Str::random(7);
         $purpose = ! empty($_POST['purpose']) ? $_POST['purpose'] : 'fine-tune';
-        $model = ! empty($_POST['model']) ? $_POST['model'] : 'gpt-3.5-turbo-1106';
+        $model = ! empty($_POST['model']) ? $_POST['model'] : EntityEnum::GPT_3_5_TURBO_1106->value;
         $file = ! empty($_FILES['file']) ? $_FILES['file'] : [];
 
         if (empty($title)) {
@@ -37,13 +38,13 @@ class AIFineTuneController extends Controller
         }
 
         // Fetch the Site Settings object with openai_api_secret
-        $settings = Setting::first();
+        $settings = Setting::getCache();
         if ($settings?->user_api_option) {
             $apiKeys = explode(',', auth()->user()?->api_keys);
         } else {
             $apiKeys = explode(',', $settings?->openai_api_secret);
         }
-        $fine_tune_list = json_decode(SettingTwo::first()->fine_tune_list, true);
+        $fine_tune_list = json_decode(SettingTwo::getCache()->fine_tune_list, true);
         $apiKey = $apiKeys[0];
         $open_ai = new OpenAi($apiKey);
         $html = '';
@@ -51,7 +52,7 @@ class AIFineTuneController extends Controller
         // upload file
         $uploadFile = $open_ai->uploadFile([
             'purpose' => $purpose,
-            'file' => $c_file,
+            'file'    => $c_file,
         ]);
         $uploadFile_array = json_decode($uploadFile, true);
         $uploadFile = json_decode($uploadFile);
@@ -62,7 +63,7 @@ class AIFineTuneController extends Controller
 
         // create fine-tune
         $createFineTune = $open_ai->createFineTune([
-            'model' => $model,
+            'model'         => $model,
             'training_file' => $uploadFile->id,
         ]);
         $createFineTune = json_decode($createFineTune);
@@ -74,10 +75,10 @@ class AIFineTuneController extends Controller
         // update data
         $fine_tune_list[$uploadFile->id] = [
             'title' => $title,
-            'file' => $uploadFile_array,
+            'file'  => $uploadFile_array,
         ];
 
-        $save_settings = SettingTwo::first();
+        $save_settings = SettingTwo::getCache();
         $save_settings->fine_tune_list = json_encode($fine_tune_list);
         $save_settings->save();
 
@@ -127,13 +128,13 @@ class AIFineTuneController extends Controller
         }
 
         // Fetch the Site Settings object with openai_api_secret
-        $settings = Setting::first();
+        $settings = Setting::getCache();
         if ($settings?->user_api_option) {
             $apiKeys = explode(',', auth()->user()?->api_keys);
         } else {
             $apiKeys = explode(',', $settings?->openai_api_secret);
         }
-        $fine_tune_list = json_decode(SettingTwo::first()->fine_tune_list, true);
+        $fine_tune_list = json_decode(SettingTwo::getCache()->fine_tune_list, true);
         $apiKey = $apiKeys[0];
         $open_ai = new OpenAi($apiKey);
 
@@ -155,7 +156,7 @@ class AIFineTuneController extends Controller
 
         if (isset($fine_tune_list[$file_id])) {
             unset($fine_tune_list[$file_id]);
-            $save_settings = SettingTwo::first();
+            $save_settings = SettingTwo::getCache();
             $save_settings->fine_tune_list = json_encode($fine_tune_list);
             $save_settings->save();
         }
@@ -168,13 +169,13 @@ class AIFineTuneController extends Controller
     {
 
         // Fetch the Site Settings object with openai_api_secret
-        $settings = Setting::first();
+        $settings = Setting::getCache();
         if ($settings?->user_api_option) {
             $apiKeys = explode(',', auth()->user()?->api_keys);
         } else {
             $apiKeys = explode(',', $settings?->openai_api_secret);
         }
-        $fine_tune_list = json_decode(SettingTwo::first()->fine_tune_list, true);
+        $fine_tune_list = json_decode(SettingTwo::getCache()->fine_tune_list, true);
         $apiKey = $apiKeys[0];
         $open_ai = new OpenAi($apiKey);
         $html = '';
@@ -230,13 +231,13 @@ class AIFineTuneController extends Controller
     {
 
         // Fetch the Site Settings object with openai_api_secret
-        $settings = Setting::first();
+        $settings = Setting::getCache();
         if ($settings?->user_api_option) {
             $apiKeys = explode(',', auth()->user()?->api_keys);
         } else {
             $apiKeys = explode(',', $settings?->openai_api_secret);
         }
-        $fine_tune_list = json_decode(SettingTwo::first()->fine_tune_list, true);
+        $fine_tune_list = json_decode(SettingTwo::getCache()->fine_tune_list, true);
         $apiKey = $apiKeys[0];
         $open_ai = new OpenAi($apiKey);
         $html = '';

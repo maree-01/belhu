@@ -55,7 +55,7 @@
                         <div id="pricing-monthly">
                             <div class="grid grid-cols-3 gap-2 max-md:grid-cols-1">
                                 @foreach ($plansSubscriptionMonthly as $plan)
-                                    @include('landing-page.pricing.item-content', ['period' => $plan->frequency == 'monthly' ? 'Per Month' : 'Per Year'])
+                                    @include('landing-page.pricing.item-content', ['period' => $plan->frequency === 'monthly' ? 'Per Month' : 'Per Year'])
                                 @endforeach
                             </div>
                         </div>
@@ -65,7 +65,7 @@
                         >
                             <div class="grid grid-cols-3 gap-2 max-md:grid-cols-1">
                                 @foreach ($plansSubscriptionAnnual as $plan)
-                                    @include('landing-page.pricing.item-content', ['period' => $plan->frequency == 'monthly' ? 'Per Month' : 'Per Year'])
+                                    @include('landing-page.pricing.item-content', ['period' => $plan->frequency === 'monthly' ? 'Per Month' : 'Per Year'])
                                 @endforeach
                             </div>
                         </div>

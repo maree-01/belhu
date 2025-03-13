@@ -21,6 +21,9 @@ class Menu extends Model
         'params',
         'type',
         'extension',
+        'bolt_menu',
+        'bolt_background',
+        'bolt_foreground',
         'letter_icon',
         'letter_icon_bg',
         'custom_menu',
@@ -28,7 +31,7 @@ class Menu extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
-        'params' => 'array',
+        'params'    => 'array',
     ];
 
     public function parent(): BelongsTo
@@ -38,7 +41,7 @@ class Menu extends Model
 
     public function children(): HasMany
     {
-        return $this->hasMany(Menu::class, 'parent_id');
+        return $this->hasMany(Menu::class, 'parent_id')->orderBy('order');
     }
 
     public function scopeActive($query)

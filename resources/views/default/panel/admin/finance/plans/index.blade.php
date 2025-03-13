@@ -72,12 +72,6 @@
                             {{ __('Price') }}
                         </th>
                         <th>
-                            {{ __('Total Words') }}
-                        </th>
-                        <th>
-                            {{ __('Total Images') }}
-                        </th>
-                        <th>
                             {{ __('Frequency') }}
                         </th>
                         <th>
@@ -101,7 +95,7 @@
                                 </x-badge>
                             </td>
                             <td>
-                                {{ $entry->type == 'prepaid' ? __('Token Pack') : __('Subscription') }}
+                                {{ $entry->type == \App\Enums\Plan\TypeEnum::TOKEN_PACK->value ? __('Token Pack') : __('Subscription') }}
                             </td>
                             <td>
                                 {{ $entry->name }}
@@ -110,13 +104,7 @@
                                 {{ $entry->price }}
                             </td>
                             <td>
-                                {{ (int) $entry->total_words >= 0 ? $entry->total_words : __('Unlimited') }}
-                            </td>
-                            <td>
-                                {{ (int) $entry->total_images >= 0 ? $entry->total_images : __('Unlimited') }}
-                            </td>
-                            <td>
-                                {{ $entry->type == 'prepaid' ? __('One Time') : __(formatCamelCase($entry->frequency)) }}
+                                {{ $entry->type == \App\Enums\Plan\TypeEnum::TOKEN_PACK->value ? __('One Time') : __(formatCamelCase($entry->frequency)) }}
                             </td>
                             <td>
                                 <p class="m-0">

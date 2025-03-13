@@ -2,12 +2,11 @@
 
 namespace App\Services;
 
+use App\Domains\Entity\Enums\EntityEnum;
 use App\Helpers\Classes\Helper;
 use App\Models\Chatbot\ChatbotDataVector;
 use App\Models\PdfData;
-use App\Models\UserOpenaiChat;
 use Illuminate\Support\Facades\DB;
-
 use OpenAI\Laravel\Facades\OpenAI;
 
 class VectorService
@@ -15,12 +14,11 @@ class VectorService
     /**
      * Retrieve vectors for a given text.
      *
-     * @param string $text
      * @return string
      */
     public function getMostSimilarText(string $text, $chat_id, $count = 5, $chatbot_id = null)
     {
-        #api key update
+        //api key update
         Helper::setOpenAiKey();
 
         $chatbot_id = $chatbot_id ?? request('chatbot_id', 0);
@@ -33,12 +31,12 @@ class VectorService
             ->get();
 
         if (count($vectors) == 0 && $chatbotVectors->count() == 0) {
-            return "";
+            return '';
         }
 
         $vector = OpenAI::embeddings()->create([
-            'model' => 'text-embedding-ada-002',
-            'input' => $text
+            'model' => EntityEnum::TEXT_EMBEDDING_ADA_002->value,
+            'input' => $text,
         ])->embeddings[0]->embedding;
 
         $similarVectors = [];
@@ -48,9 +46,9 @@ class VectorService
             $cosineSimilarity = $this->calculateCosineSimilarity($vector, json_decode($v['vector']));
 
             $similarVectors[] = [
-                'id' => $v['id'],
-                'content' => $v['content'],
-                'similarity' => $cosineSimilarity
+                'id'         => $v['id'],
+                'content'    => $v['content'],
+                'similarity' => $cosineSimilarity,
             ];
         }
 
@@ -59,9 +57,9 @@ class VectorService
                 $cosineSimilarity = $this->calculateCosineSimilarity($vector, $v['embedding']);
 
                 $similarVectors[] = [
-                    'id' => $v['id'],
-                    'content' => $v['content'],
-                    'similarity' => $cosineSimilarity
+                    'id'         => $v['id'],
+                    'content'    => $v['content'],
+                    'similarity' => $cosineSimilarity,
                 ];
             }
         }
@@ -70,7 +68,7 @@ class VectorService
             return $b['similarity'] <=> $a['similarity'];
         });
 
-        $result = "";
+        $result = '';
         $resArr = array_slice($similarVectors, 0, $count);
 
         foreach ($resArr as $item) {
@@ -99,7 +97,6 @@ class VectorService
 
     //     return $textsOrderedByIds;
     // }
-
 
     // /**
     //  * Retrieve the text for a given vector ID.
@@ -154,10 +151,6 @@ class VectorService
 
     /**
      * Calculate the cosine similarity between two vectors.
-     *
-     * @param array $v1
-     * @param array $v2
-     * @return float
      */
     private function calculateCosineSimilarity(array $v1, array $v2): float
     {

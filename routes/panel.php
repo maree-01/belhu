@@ -1,5 +1,17 @@
 <?php
 
+use App\Http\Controllers\Admin\Config\AiToolsController;
+use App\Http\Controllers\Admin\Config\BrandingController;
+use App\Http\Controllers\Admin\Config\FinanceController;
+use App\Http\Controllers\Admin\Config\GdprController;
+use App\Http\Controllers\Admin\Config\GeneralController;
+use App\Http\Controllers\Admin\Config\LoginController;
+use App\Http\Controllers\Admin\Config\MoreController;
+use App\Http\Controllers\Admin\Config\SeoController;
+use App\Http\Controllers\Admin\Config\SmtpController;
+use App\Http\Controllers\Admin\Config\StorageController;
+use App\Http\Controllers\Admin\Finance\PlanController;
+use App\Http\Controllers\Admin\Finance\TokenPackPlanController;
 use App\Http\Controllers\AdsController;
 use App\Http\Controllers\AdvertisController;
 use App\Http\Controllers\AIArticleWizardController;
@@ -8,6 +20,7 @@ use App\Http\Controllers\AIChatController;
 use App\Http\Controllers\AIController;
 use App\Http\Controllers\AIFineTuneController;
 use App\Http\Controllers\AnnouncementController;
+use App\Http\Controllers\AssistantController;
 use App\Http\Controllers\Auth\Google2FAController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\Chatbot\ChatbotController;
@@ -26,17 +39,20 @@ use App\Http\Controllers\Dashboard\UserController;
 use App\Http\Controllers\EmailTemplatesController;
 use App\Http\Controllers\ExportChatController;
 use App\Http\Controllers\Finance\ApiCostController;
+use App\Http\Controllers\Finance\CreditsTransferController;
 use App\Http\Controllers\Finance\GatewayController;
 use App\Http\Controllers\Finance\MobilePaymentsController;
 use App\Http\Controllers\Finance\PaymentProcessController;
 use App\Http\Controllers\InstallationController;
 use App\Http\Controllers\Integration\IntegrationController;
-use App\Http\Controllers\IntroductionController;
 use App\Http\Controllers\Market\MarketPlaceController;
 use App\Http\Controllers\OpenAi\GeneratorController;
 use App\Http\Controllers\PageController;
+use App\Http\Controllers\Payment\PlanAndPricingController;
 use App\Http\Controllers\PremiumSupportController;
+use App\Http\Controllers\PrivatePlanController;
 use App\Http\Controllers\PromptController;
+use App\Http\Controllers\Settings\SearchapiSettingController;
 use App\Http\Controllers\Team\TeamController;
 use App\Http\Controllers\Themes\ThemeController;
 use App\Http\Controllers\TTSController;
@@ -45,173 +61,191 @@ use App\Http\Middleware\CheckTemplateTypeAndPlan;
 use App\Services\DeFi\DeFi;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
+use Livewire\Livewire;
 use Mcamara\LaravelLocalization\Facades\LaravelLocalization;
 
 Route::group([
-    'prefix' => LaravelLocalization::setLocale(),
+    'prefix'     => LaravelLocalization::setLocale(),
     'middleware' => [
-        'localeSessionRedirect', 'localizationRedirect', 'localeViewPath',
+        'localeSessionRedirect', 'localizationRedirect', 'localeViewPath', 'newExtensionInstalled',
     ],
-], function () {
-    Route::prefix('dashboard')
-        ->middleware(['auth'])
-        ->name('dashboard.')
-        ->group(function () {
+], static function () {
 
-            Route::get('/', [UserController::class, 'redirect'])->name('index');
+    Livewire::setUpdateRoute(static function ($handle) {
+        return Route::post('/livewire/update', $handle);
+    });
+
+    Route::prefix('dashboard')
+        ->middleware(['auth', 'updateUserActivity'])
+        ->name('dashboard.')
+        ->group(static function () {
+
+            Route::middleware('checkInstallation')
+                ->get('/', [UserController::class, 'redirect'])
+                ->name('index');
 
             DeFi::routes();
 
             //User Area
-            Route::prefix('user')->name('user.')->group(function () {
-                Route::get('/', [UserController::class, 'index'])->name('index');
+            Route::prefix('user')
+                ->name('user.')
+                ->group(function () {
+                    Route::get('', [UserController::class, 'index'])->name('index');
 
-                Route::post('/mark-tour-seen', [UserController::class, 'markTourSeen'])->name('markTourSeen');
-                Route::group([
-                    'controller' => Google2FAController::class,
-                    'prefix' => '2fa',
-                    'as' => '2fa.',
-                ], function () {
-                    Route::get('activate', 'activate2FA')->name('activate');
-                    Route::post('activate', 'assign2FA');
-                    Route::get('deactivate', 'deactivate2FA')->name('deactivate');
-                });
+                    Route::get('check/payment', [PaymentProcessController::class, 'checkSubscriptionStatusFromAjax'])->name('check.payment');
 
-                // dash_notify_seen
-                Route::post('/dash_notify_seen', [UserController::class, 'markDashNotifySeen'])->name('dash_notify_seen');
+                    Route::post('/mark-tour-seen', [UserController::class, 'markTourSeen'])->name('markTourSeen');
+                    Route::group([
+                        'controller' => Google2FAController::class,
+                        'prefix'     => '2fa',
+                        'as'         => '2fa.',
+                    ], static function () {
+                        Route::get('activate', 'activate2FA')->name('activate');
+                        Route::post('activate', 'assign2FA');
+                        Route::get('deactivate', 'deactivate2FA')->name('deactivate');
+                    });
 
-                // premium support
-                Route::get('premium-support', PremiumSupportController::class)->name('premium-support');
+                    // dash_notify_seen
+                    Route::post('/dash_notify_seen', [UserController::class, 'markDashNotifySeen'])->name('dash_notify_seen');
 
-                Route::prefix('api-keys')->name('apikeys.')->group(function () {
-                    Route::get('/', [UserController::class, 'apiKeysList'])->name('index');
-                    Route::post('/update', [UserController::class, 'apiKeysSave'])->name('update');
-                });
+                    // premium support
+                    Route::get('premium-support', PremiumSupportController::class)->name('premium-support');
 
-                Route::group([
-                    'as' => 'integration.',
-                    'prefix' => 'integration',
-                    'controller' => IntegrationController::class,
-                ], function () {
-                    Route::get('share/{userIntegration}/workbook/{userOpenai}', 'workbook')->name('share.workbook');
-                    Route::post('share/{userIntegration}/workbook/{userOpenai}', 'storeWorkbook');
-                    Route::post('share/{userIntegration}/image/{userOpenai}', 'storeImage')->name('share.image');
-                });
+                    Route::prefix('api-keys')->name('apikeys.')->group(function () {
+                        Route::get('/', [UserController::class, 'apiKeysList'])->name('index');
+                        Route::post('/update', [UserController::class, 'apiKeysSave'])->name('update');
+                    });
 
-                Route::resource('integration', IntegrationController::class)->only(['index', 'edit', 'update']);
+                    Route::group([
+                        'as'         => 'integration.',
+                        'prefix'     => 'integration',
+                        'controller' => IntegrationController::class,
+                    ], static function () {
+                        Route::get('share/{userIntegration}/workbook/{userOpenai}', 'workbook')->name('share.workbook');
+                        Route::post('share/{userIntegration}/workbook/{userOpenai}', 'storeWorkbook');
+                        Route::post('share/{userIntegration}/image/{userOpenai}', 'storeImage')->name('share.image');
+                    });
 
-                // brand voice
-                Route::group([
-                    'as' => 'brand.',
-                    'prefix' => 'brand',
-                    'controller' => BrandController::class,
-                ], function () {
-                    Route::get('/', 'index')->name('index');
-                    Route::get('/add-or-update/{id?}', 'addOrUpdate')->name('edit');
-                    Route::get('/delete/{id?}', 'delete')->name('delete');
-                    Route::post('/save', 'store')->name('save');
-                    Route::get('/get-products/{id?}', 'getProducts')->name('getProducts');
-                });
+                    Route::resource('integration', IntegrationController::class)->only(['index', 'edit', 'update']);
 
-                // teams
-                Route::group([
-                    'as' => 'team.',
-                    'prefix' => 'team',
-                    'controller' => TeamController::class,
-                ], function () {
-                    Route::get('', 'index')->name('index');
-                    Route::get('{team}/invitations', 'invitations')->name('invitations');
-                    Route::post('{team}/invitation', 'storeInvitation')->name('invitation.store');
-                    Route::get('{team}/member/{teamMember}/edit', 'teamMember')->name('member.edit');
-                    Route::post('{team}/member/{teamMember}/update', 'teamMemberUpdate')->name('member.update');
-                    Route::get('{team}/member/{teamMember}/delete', 'teamMemberDelete')->name('member.delete');
-                });
+                    // brand voice
+                    Route::get('brand', [BrandController::class, 'index'])->name('brand.index')->middleware(CheckTemplateTypeAndPlan::class);
+                    Route::resource('brand', BrandController::class)->except(['index', 'show', 'destroy']);
+                    Route::group([
+                        'as'         => 'brand.',
+                        'prefix'     => 'brand',
+                        'controller' => BrandController::class,
+                    ], static function () {
+                        Route::get('delete/{brand}', 'delete')->name('delete');
+                        Route::get('get-products/{brand?}', 'getProducts')->name('brand.getProducts');
+                    });
 
-                // user generator
-                Route::group([
-                    'as' => 'generator.',
-                    'prefix' => 'generator',
-                    'controller' => GeneratorController::class,
-                ], function () {
-                    Route::get('{workbook_slug?}', [GeneratorController::class, 'index'])->name('index');
-                    Route::get('/option/{slug}', [GeneratorController::class, 'generatorOptions'])->name('options');
+                    // teams
+                    Route::group([
+                        'as'         => 'team.',
+                        'prefix'     => 'team',
+                        'controller' => TeamController::class,
+                    ], static function () {
+                        Route::get('', 'index')->name('index');
+                        Route::get('{team}/invitations', 'invitations')->name('invitations');
+                        Route::post('{team}/invitation', 'storeInvitation')->name('invitation.store');
+                        Route::get('{team}/member/{teamMember}/edit', 'teamMember')->name('member.edit');
+                        Route::post('{team}/member/{teamMember}/update', 'teamMemberUpdate')->name('member.update');
+                        Route::get('{team}/member/{teamMember}/delete', 'teamMemberDelete')->name('member.delete');
+                    });
 
-                    Route::post('/generate-stream', [GeneratorController::class, 'buildStreamedOutput'])->name('stream.generate');
-                    Route::post('/reduce-tokens/{type}', [GeneratorController::class, 'reduceTokensWhenIntterruptStream'])->name('reduce-tokens');
-                });
+                    // user generator
+                    Route::group([
+                        'as'         => 'generator.',
+                        'prefix'     => 'generator',
+                        'controller' => GeneratorController::class,
+                    ], static function () {
+                        Route::get('{workbook_slug?}', [GeneratorController::class, 'index'])->name('index')->middleware(CheckTemplateTypeAndPlan::class);
+                        Route::get('/option/{slug}', [GeneratorController::class, 'generatorOptions'])->name('options')->middleware(CheckTemplateTypeAndPlan::class);
 
-                //Openai generator
-                Route::prefix('openai')->name('openai.')
-                    ->group(function () {
-                        Route::get('/', [UserController::class, 'openAIList'])->name('list')->middleware('hasTokens');
-                        Route::get('/favorite-openai', [UserController::class, 'openAIFavoritesList'])->name('list.favorites');
-                        Route::post('/favorite', [UserController::class, 'openAIFavorite']);
-                        //Generators
-                        Route::middleware([
-                            'hasTokens',
-                            CheckTemplateTypeAndPlan::class,
-                        ])
-                            ->group(function () {
-                                Route::get('/generator/{slug}', [UserController::class, 'openAIGenerator'])->name('generator');
-                                Route::get('/generator/{slug}/workbook', [UserController::class, 'openAIGeneratorWorkbook'])->name('generator.workbook');
+                        Route::post('/generate-stream', [GeneratorController::class, 'buildStreamedOutput'])->name('stream.generate');
+                        Route::post('/reduce-tokens/{type}', [GeneratorController::class, 'reduceTokensWhenIntterruptStream'])->name('reduce-tokens');
+                    });
+
+                    Route::get('private/subscription/{key}', [PrivatePlanController::class, 'index']);
+
+                    //Openai generator
+                    Route::prefix('openai')->name('openai.')
+                        ->group(function () {
+                            Route::get('/', [UserController::class, 'openAIList'])->name('list')->middleware(CheckTemplateTypeAndPlan::class);
+                            Route::get('/favorite-openai', [UserController::class, 'openAIFavoritesList'])->name('list.favorites');
+                            Route::post('/favorite', [UserController::class, 'openAIFavorite']);
+
+                            Route::get('generator/realtime', [GeneratorController::class, 'realtime'])->name('realtime.chat');
+                            Route::get('generator/check/status', [UserController::class, 'checkStatus'])->name('check.status');
+
+                            //Generators
+                            Route::middleware([
+                                CheckTemplateTypeAndPlan::class,
+                            ])
+                                ->group(function () {
+                                    Route::get('/generator/{slug}', [UserController::class, 'openAIGenerator'])->name('generator');
+                                    Route::get('/generator/{slug}/workbook', [UserController::class, 'openAIGeneratorWorkbook'])->name('generator.workbook');
+                                });
+
+                            Route::prefix('custom')->name('custom.')->group(function () {
+                                Route::get('/', [UserController::class, 'openAICustomList'])->name('list');
+                                Route::get('/add-or-update/{id?}', [UserController::class, 'openAICustomAddOrUpdate'])->name('addOrUpdate');
+                                Route::get('/delete/{id?}', [UserController::class, 'openAICustomDelete'])->name('delete');
+                                Route::post('/save', [UserController::class, 'openAICustomAddOrUpdateSave']);
                             });
 
-                        Route::prefix('custom')->name('custom.')->group(function () {
-                            Route::get('/', [UserController::class, 'openAICustomList'])->name('list');
-                            Route::get('/add-or-update/{id?}', [UserController::class, 'openAICustomAddOrUpdate'])->name('addOrUpdate');
-                            Route::get('/delete/{id?}', [UserController::class, 'openAICustomDelete'])->name('delete');
-                            Route::post('/save', [UserController::class, 'openAICustomAddOrUpdateSave']);
-                        });
+                            //Generators Generate
+                            Route::post('/generate', [AIController::class, 'buildOutput'])->name('output');
 
-                        //Generators Generate
-                        Route::post('/generate', [AIController::class, 'buildOutput']);
-                        Route::get('/generate', [AIController::class, 'streamedTextOutput']);
+                            Route::get('/generate', [AIController::class, 'streamedTextOutput']);
 
-                        Route::post('/check/videoprogress', [AIController::class, 'checkVideoProgress']);
+                            Route::post('/getYoutubeCaptions', [AIController::class, 'getYoutubeCaptions']);
 
-                        Route::get('/rewrite', [AIController::class, 'reWrite'])->name('rewriter');
+                            Route::post('/check/videoprogress', [AIController::class, 'checkVideoProgress']);
 
-                        Route::get('/generate/lazyload', [AIController::class, 'lazyLoadImage'])->name('lazyloadimage');
+                            Route::get('/rewrite', [AIController::class, 'reWrite'])->name('rewriter')->middleware(CheckTemplateTypeAndPlan::class);
 
-                        Route::post('/image/generate', [AIController::class, 'chatImageOutput'])->name('chat.image');
+                            Route::get('/generate/lazyload', [AIController::class, 'lazyLoadImage'])->name('lazyloadimage');
 
-                        //Fine Tune
-                        Route::post('/add-fine-tune', [AIFineTuneController::class, 'addFineTune']);
-                        Route::post('/delete-fine-tune', [AIFineTuneController::class, 'deleteFineTune']);
+                            Route::post('/image/generate', [AIController::class, 'chatImageOutput'])->name('chat.image');
 
-                        //Low systems
-                        Route::post('/low/generate_save', [AIController::class, 'lowGenerateSave']);
-                        Route::post('message/title_save', [AIController::class, 'messageTitleSave']);
+                            //Fine Tune
+                            Route::post('/add-fine-tune', [AIFineTuneController::class, 'addFineTune']);
+                            Route::post('/delete-fine-tune', [AIFineTuneController::class, 'deleteFineTune']);
 
-                        Route::post('/generate-speech', [TTSController::class, 'generateSpeech']);
+                            //Low systems
+                            Route::post('/low/generate_save', [AIController::class, 'lowGenerateSave']);
+                            Route::post('message/title_save', [AIController::class, 'messageTitleSave']);
 
-                        Route::post('/update-writing', [AIController::class, 'updateWriting']);
+                            Route::post('/generate-speech', [TTSController::class, 'generateSpeech']);
 
-                        //Documents
-                        Route::prefix('documents')->name('documents.')->group(function () {
-                            Route::get('/all/{id?}', [UserController::class, 'documentsAll'])->name('all');
-                            Route::get('/images', [UserController::class, 'documentsImages'])->name('images');
-                            Route::get('/single/{slug}', [UserController::class, 'documentsSingle'])->name('single');
-                            Route::get('/delete/{slug}', [UserController::class, 'documentsDelete'])->name('delete');
-                            Route::get('/delete/image/{slug}', [UserController::class, 'documentsImageDelete'])->name('image.delete');
-                            Route::post('/workbook-save', [UserController::class, 'openAIGeneratorWorkbookSave']);
+                            Route::post('/update-writing', [AIController::class, 'updateWriting']);
 
-                            Route::post('/update-folder/{folder}', [UserController::class, 'updateFolder'])->name('update-folder');
-                            Route::post('/update-file/{file}', [UserController::class, 'updateFile'])->name('update-file');
+                            //Documents
+                            Route::prefix('documents')->name('documents.')->group(function () {
+                                Route::get('/all/{id?}', [UserController::class, 'documentsAll'])->name('all');
+                                Route::get('/images', [UserController::class, 'documentsImages'])->name('images');
+                                Route::get('/single/{slug}', [UserController::class, 'documentsSingle'])->name('single');
+                                Route::get('/delete/{slug}', [UserController::class, 'documentsDelete'])->name('delete');
+                                Route::get('/delete/image/{slug}', [UserController::class, 'documentsImageDelete'])->name('image.delete');
+                                Route::post('/workbook-save', [UserController::class, 'openAIGeneratorWorkbookSave']);
 
-                            Route::post('/delete-folder/{folder}', [UserController::class, 'deleteFolder'])->name('delete-folder');
-                            Route::post('/new-folder', [UserController::class, 'newFolder'])->name('new-folder');
-                            Route::post('/move-to-folder', [UserController::class, 'moveToFolder'])->name('move-to-folder');
+                                Route::post('/update-folder/{folder}', [UserController::class, 'updateFolder'])->name('update-folder');
+                                Route::post('/update-file/{file}', [UserController::class, 'updateFile'])->name('update-file');
 
-                            // make favorite
-                            Route::post('/favorite', [UserController::class, 'docsFavorite'])->name('favorite');
-                            Route::post('/overview', [UserController::class, 'overview'])->name('overview');
-                        });
+                                Route::post('/delete-folder/{folder}', [UserController::class, 'deleteFolder'])->name('delete-folder');
+                                Route::post('/new-folder', [UserController::class, 'newFolder'])->name('new-folder');
+                                Route::post('/move-to-folder', [UserController::class, 'moveToFolder'])->name('move-to-folder');
 
-                        Route::middleware('hasTokens')->group(function () {
+                                // make favorite
+                                Route::post('/favorite', [UserController::class, 'docsFavorite'])->name('favorite');
+                                Route::post('/overview', [UserController::class, 'overview'])->name('overview');
+                            });
+
                             Route::prefix('chat')->name('chat.')->group(function () {
-                                Route::get('/ai-chat-list', [AIChatController::class, 'openAIChatList'])->name('list');
-                                Route::get('/ai-chat/{slug}', [AIChatController::class, 'openAIChat'])->name('chat');
+                                Route::get('/ai-chat-list', [AIChatController::class, 'openAIChatList'])->name('list')->middleware(CheckTemplateTypeAndPlan::class);
+                                Route::get('/ai-chat/{slug?}', [AIChatController::class, 'openAIChat'])->name('chat')->middleware(CheckTemplateTypeAndPlan::class);
                                 Route::match(['get', 'post'], '/chat-send', [AIChatController::class, 'chatOutput']);
                                 Route::match(['get', 'post'], '/chatbot-send', [AIChatController::class, 'chatbotOutput']);
                                 Route::post('/open-chat-area-container', [AIChatController::class, 'openChatAreaContainer']);
@@ -239,11 +273,9 @@ Route::group([
                                 //Low systems
                                 Route::post('/low/chat_save', [AIChatController::class, 'lowChatSave']);
                             });
-                        });
 
-                        Route::middleware('hasTokens')->group(function () {
                             Route::prefix('articlewizard')->name('articlewizard.')->group(function () {
-                                Route::get('/new', [AIArticleWizardController::class, 'newArticle'])->name('new');
+                                Route::get('/new', [AIArticleWizardController::class, 'newArticle'])->name('new')->middleware(CheckTemplateTypeAndPlan::class);
                                 Route::get('/genarticle', [AIArticleWizardController::class, 'generateArticle'])->name('genarticle');
                                 Route::post('/update', [AIArticleWizardController::class, 'updateArticle'])->name('update');
                                 Route::post('/clear', [AIArticleWizardController::class, 'clearArticle'])->name('clear');
@@ -259,79 +291,66 @@ Route::group([
 
                                 Route::post('/startover', [AIArticleWizardController::class, 'startover'])->name('startover');
                             });
+
+                            //     Route::prefix('vision')->name('vision.')->group(function () {
+                            //         Route::get('/ai-vision', [AIVisionController::class, 'openAIVision'])->name('vision');
+                            //     });
+
                         });
 
-                        // Route::middleware('hasTokens')->group(function () {
-                        //     Route::prefix('vision')->name('vision.')->group(function () {
-                        //         Route::get('/ai-vision', [AIVisionController::class, 'openAIVision'])->name('vision');
-                        //     });
-                        // });
+                    // user profile settings
 
+                    Route::prefix('settings')->name('settings.')->group(function () {
+                        Route::get('/', [UserController::class, 'userSettings'])->name('index');
+                        Route::post('/save', [UserController::class, 'userSettingsSave']);
+                        Route::get('/delete-account', [UserController::class, 'deleteAccount'])->name('deleteAccount');
+                        Route::post('/delete-account', [UserController::class, 'deleteAccountRequest'])->name('deleteAccount.send');
+
+                        Route::get('openai/test', [SettingsController::class, 'openaiTest'])->name('openai.test');
+                        Route::get('anthropic/test', [SettingsController::class, 'anthropicTest'])->name('anthropic.test');
+                        Route::get('gemini/test', [SettingsController::class, 'geminiTest'])->name('gemini.test');
                     });
+                    // Subscription and payment
+                    Route::prefix('payment')
+                        ->name('payment.')
+                        ->group(function () {
+                            Route::get('', PlanAndPricingController::class)->name('subscription');
+                            Route::get('credit-list-partial', [PlanAndPricingController::class, 'creditListPartial'])->name('credit-list-partial');
+                            Route::get('/prepaid/{planId}/{gatewayCode}', [PaymentProcessController::class, 'startPrepaidPaymentProcess'])->name('startPrepaidPaymentProcess');
+                            Route::get('/subscribe/{planId}/{gatewayCode}', [PaymentProcessController::class, 'startSubscriptionProcess'])->name('startSubscriptionProcess');
+                            Route::match(['get', 'post'], '/start/subscription/checkout/{gateway?}/{referral?}', [PaymentProcessController::class, 'startSubscriptionCheckoutProcess'])->name('subscription.checkout');
+                            Route::match(['get', 'post'], '/start/prepaid/checkout/{gateway?}/{referral?}', [PaymentProcessController::class, 'startPrepaidCheckoutProcess'])->name('prepaid.checkout');
+                            Route::get('/subscribe-cancel', [PaymentProcessController::class, 'cancelActiveSubscription'])->name('cancelActiveSubscription');
+                            Route::post('/paypal/create-paypal-order', [PaymentProcessController::class, 'createPayPalOrder'])->name('prepaid.createPayPalOrder');
+                            Route::post('iyzico/prepaid/callback', [PaymentProcessController::class, 'iyzicoPrepaidCallback'])->name('iyzico.prepaid.callback');
+                            Route::post('iyzico/subscribe/callback', [PaymentProcessController::class, 'iyzicoSubscribeCallback'])->name('iyzico.subscribe.callback');
+                            Route::get('iyzico/products', [PaymentProcessController::class, 'iyzicoProductsList'])->name('iyzico.products');
 
-                if (class_exists('App\Http\Controllers\SEO\SeoController')) {
-                    Route::middleware('hasTokens')->group(function () {
-                        Route::prefix('seo')->name('seo.')->group(function () {
-                            Route::get('', [\App\Http\Controllers\SEO\SeoController::class, 'index'])->name('index');
-                            Route::post('/suggestKeywords', [\App\Http\Controllers\SEO\SeoController::class, 'suggestKeywords'])->name('suggestKeywords');
-                            Route::post('/genkeywords', [\App\Http\Controllers\SEO\SeoController::class, 'generateKeywords'])->name('genkeywords');
-                            Route::post('/genSearchQuestions', [\App\Http\Controllers\SEO\SeoController::class, 'genSearchQuestions'])->name('genSearchQuestions');
-                            Route::post('/genSEO', [\App\Http\Controllers\SEO\SeoController::class, 'genSEO'])->name('genSEO');
-                            Route::post('/analyseArticle', [\App\Http\Controllers\SEO\SeoController::class, 'analyseArticle'])->name('analyseArticle');
-                            Route::post('/improveArticle', [\App\Http\Controllers\SEO\SeoController::class, 'improveArticle'])->name('improveArticle');
+                            Route::get('succesful', [PaymentProcessController::class, 'successful'])->name('succesful');
+                            Route::post('/user-subscribe-cancel/{id}', [PaymentProcessController::class, 'cancelActiveSubscriptionByAdmin'])->name('cancelActiveSubscriptionByAdmin');
+                            Route::post('/assign-plan', [PaymentProcessController::class, 'assignPlanByAdmin'])->name('assignPlanByAdmin');
+                            Route::post('/assign-token-plan', [PaymentProcessController::class, 'assignTokenByAdmin'])->name('assignTokenByAdmin');
+
+                            Route::post('update-address', [UserController::class, 'userSettingsUpdate'])->name('updateAddressDetails');
                         });
+
+                    //Orders invoice billing
+                    Route::prefix('orders')->name('orders.')->group(function () {
+                        Route::get('/', [UserController::class, 'invoiceList'])->name('index');
+                        Route::get('/order/{order_id}', [UserController::class, 'invoiceSingle'])->name('invoice');
                     });
-                }
-                // user profile settings
+                    //Affiliates
+                    Route::prefix('affiliates')->name('affiliates.')->group(function () {
+                        Route::get('/', [UserController::class, 'affiliatesList'])->name('index');
+                        Route::post('/send-invitation', [UserController::class, 'affiliatesListSendInvitation']);
+                        Route::post('/send-request', [UserController::class, 'affiliatesListSendRequest']);
+                        Route::get('/users', [UserController::class, 'affiliatesUsers'])->name('users');
+                    });
 
-                Route::prefix('settings')->name('settings.')->group(function () {
-                    Route::get('/', [UserController::class, 'userSettings'])->name('index');
-                    Route::post('/save', [UserController::class, 'userSettingsSave']);
-                    Route::get('/delete-account', [UserController::class, 'deleteAccount'])->name('deleteAccount');
-                    Route::post('/delete-account', [UserController::class, 'deleteAccountRequest'])->name('deleteAccount.send');
+                    Route::resource('voice', ElevenlabVoiceController::class)->except('show', 'destroy');
+                    Route::get('voice/{voice}', [ElevenlabVoiceController::class, 'delete'])->name('voice.destroy');
 
-                    Route::get('openai/test', [SettingsController::class, 'openaiTest'])->name('openai.test');
-                    Route::get('anthropic/test', [SettingsController::class, 'anthropicTest'])->name('anthropic.test');
-                    Route::get('gemini/test', [SettingsController::class, 'geminiTest'])->name('gemini.test');
                 });
-                // Subscription and payment
-                Route::prefix('payment')->name('payment.')->group(function () {
-                    Route::get('/', [UserController::class, 'subscriptionPlans'])->name('subscription');
-                    Route::get('/prepaid/{planId}/{gatewayCode}', [PaymentProcessController::class, 'startPrepaidPaymentProcess'])->name('startPrepaidPaymentProcess');
-                    Route::get('/subscribe/{planId}/{gatewayCode}', [PaymentProcessController::class, 'startSubscriptionProcess'])->name('startSubscriptionProcess');
-                    Route::match(['get', 'post'], '/start/subscription/checkout/{gateway?}/{referral?}', [PaymentProcessController::class, 'startSubscriptionCheckoutProcess'])->name('subscription.checkout');
-                    Route::match(['get', 'post'], '/start/prepaid/checkout/{gateway?}/{referral?}', [PaymentProcessController::class, 'startPrepaidCheckoutProcess'])->name('prepaid.checkout');
-                    Route::get('/subscribe-cancel', [PaymentProcessController::class, 'cancelActiveSubscription'])->name('cancelActiveSubscription');
-                    Route::post('/paypal/create-paypal-order', [PaymentProcessController::class, 'createPayPalOrder'])->name('prepaid.createPayPalOrder');
-                    Route::post('iyzico/prepaid/callback', [PaymentProcessController::class, 'iyzicoPrepaidCallback'])->name('iyzico.prepaid.callback');
-                    Route::post('iyzico/subscribe/callback', [PaymentProcessController::class, 'iyzicoSubscribeCallback'])->name('iyzico.subscribe.callback');
-                    Route::get('iyzico/products', [PaymentProcessController::class, 'iyzicoProductsList'])->name('iyzico.products');
-
-                    Route::get('succesful', [PaymentProcessController::class, 'succesful'])->name('succesful');
-                    Route::post('/user-subscribe-cancel/{id}', [PaymentProcessController::class, 'cancelActiveSubscriptionByAdmin'])->name('cancelActiveSubscriptionByAdmin');
-                    Route::post('/assign-plan', [PaymentProcessController::class, 'assignPlanByAdmin'])->name('assignPlanByAdmin');
-                    Route::post('/assign-token-plan', [PaymentProcessController::class, 'assignTokenByAdmin'])->name('assignTokenByAdmin');
-
-                    Route::post('update-address', [UserController::class, 'userSettingsUpdate'])->name('updateAddressDetails');
-                });
-
-                //Orders invoice billing
-                Route::prefix('orders')->name('orders.')->group(function () {
-                    Route::get('/', [UserController::class, 'invoiceList'])->name('index');
-                    Route::get('/order/{order_id}', [UserController::class, 'invoiceSingle'])->name('invoice');
-                });
-                //Affiliates
-                Route::prefix('affiliates')->name('affiliates.')->group(function () {
-                    Route::get('/', [UserController::class, 'affiliatesList'])->name('index');
-                    Route::post('/send-invitation', [UserController::class, 'affiliatesListSendInvitation']);
-                    Route::post('/send-request', [UserController::class, 'affiliatesListSendRequest']);
-                    Route::get('/users', [UserController::class, 'affiliatesUsers'])->name('users');
-                });
-
-                Route::resource('voice', ElevenlabVoiceController::class)->except('show', 'destroy');
-                Route::get('voice/{voice}', [ElevenlabVoiceController::class, 'delete'])->name('voice.destroy');
-
-            });
             //Admin Area
             Route::prefix('admin')
                 ->middleware('admin')
@@ -339,9 +358,22 @@ Route::group([
                 ->group(function () {
                     Route::get('/', [AdminController::class, 'index'])->name('index');
 
+                    Route::resource('ai-assistant', AssistantController::class);
+
                     Route::group([
-                        'as' => 'chatbot.',
-                        'prefix' => 'chatbot/{chatbot}',
+                        'as'         => 'transfer',
+                        'prefix'     => 'transfer',
+                        'controller' => CreditsTransferController::class,
+                    ], static function () {
+                        Route::post('users-credits', 'transferUsersEntityCredits')->name('users.credits');
+                        Route::post('users-credits-engine', 'transferUsersEntityCreditsOfEngines')->name('users.credits.engine');
+                        Route::post('plans-credits', 'transferPlansEntityCredits')->name('plans.credits');
+                        Route::post('plans-credits-engine', 'transferPlansEntityCreditsOfEngines')->name('plans.credits.engine');
+                    });
+
+                    Route::group([
+                        'as'         => 'chatbot.',
+                        'prefix'     => 'chatbot/{chatbot}',
                         'controller' => ChatbotTrainingController::class,
                     ], function () {
                         Route::post('text', 'text')->name('text');
@@ -355,7 +387,7 @@ Route::group([
                     });
 
                     Route::group([
-                        'as' => 'ai-chat-model.',
+                        'as'     => 'ai-chat-model.',
                         'prefix' => 'ai-chat-model',
                     ], function () {
                         Route::get('', [AiChatbotModelController::class, 'index'])->name('index');
@@ -363,8 +395,8 @@ Route::group([
                     });
 
                     Route::group([
-                        'as' => 'chatbot.',
-                        'prefix' => 'chatbot',
+                        'as'         => 'chatbot.',
+                        'prefix'     => 'chatbot',
                         'controller' => ChatbotController::class,
                     ], function () {
                         Route::get('setting', 'setting')->name('setting');
@@ -376,10 +408,18 @@ Route::group([
 
                     // Marketplace
                     Route::group([
-                        'as' => 'marketplace.',
-                        'prefix' => 'marketplace',
+                        'as'         => 'marketplace.',
+                        'prefix'     => 'marketplace',
                         'controller' => MarketPlaceController::class,
                     ], function () {
+
+                        Route::get('cart', [MarketPlaceController::class, 'cart'])->name('cart');
+
+                        Route::get(
+                            'cart/{id}/add-delete',
+                            [MarketPlaceController::class, 'addDelete']
+                        )->name('cart.add-delete');
+
                         Route::get('', 'index')->name('index');
                         Route::get('licensed-extensions', 'licensedExtension')->name('liextension');
                         Route::get('{slug}', 'extension')->name('extension');
@@ -404,6 +444,10 @@ Route::group([
                         Route::get('edit/{user}', [AdminController::class, 'usersEdit'])->name('edit');
                         Route::get('/delete/{id}', [AdminController::class, 'usersDelete'])->name('delete');
                         Route::post('save', [AdminController::class, 'usersSave'])->name('update');
+
+                        Route::get('permissions', [AdminController::class, 'userPermissions'])->name('permissions');
+                        Route::post('permission-save', [AdminController::class, 'userPermissionSave'])
+                            ->name('permissionSave');
 
                         Route::get('/finance/{id}', [AdminController::class, 'usersFinance'])->name('finance');
 
@@ -433,7 +477,7 @@ Route::group([
 
                     //Bank Transactions
                     Route::prefix('bank')->name('bank.')->group(function () {
-                        Route::get('/transactions', [PaymentProcessController::class, 'banktransactions'])->name('transactions.list');
+                        Route::get('/transactions', [PaymentProcessController::class, 'bankTransactions'])->name('transactions.list');
                         Route::get('/delete/{id?}', [PaymentProcessController::class, 'bankDelete'])->name('transactions.delete');
                         Route::post('/save', [PaymentProcessController::class, 'bankUpdateSave'])->name('transactions.update');
                     });
@@ -462,7 +506,7 @@ Route::group([
                             Route::get('/', [AdminController::class, 'openAIChatList'])->name('list');
                             Route::get('/add-or-update/{id?}', [AdminController::class, 'openAIChatAddOrUpdate'])->name('addOrUpdate');
                             Route::get('/delete/{id?}', [AdminController::class, 'openAIChatDelete'])->name('delete');
-                            Route::post('/save', [AdminController::class, 'openAIChatAddOrUpdateSave']);
+                            Route::post('/save', [AdminController::class, 'openAIChatAddOrUpdateSave'])->name('save');
 
                             Route::post('/update-plan', [AdminController::class, 'updatePlan'])->name('updatePlan');
 
@@ -477,6 +521,17 @@ Route::group([
 
                     //Finance
                     Route::prefix('finance')->name('finance.')->group(function () {
+
+                        Route::resource('plan', PlanController::class)->except(
+                            'store', 'update', 'destroy', 'show'
+                        );
+
+                        Route::get('plan/{plan}/delete', [PlanController::class, 'destroy'])->name('plan.destroy');
+
+                        Route::resource('token-pack-plan', TokenPackPlanController::class)->only(
+                            'create', 'edit'
+                        );
+
                         //Plans
                         Route::get('free-feature', [AdminController::class, 'freeFeature'])->name('free.feature');
                         Route::post('free-feature', [AdminController::class, 'freeFeatureSave']);
@@ -487,6 +542,7 @@ Route::group([
                             Route::get('/delete/{id}', [AdminController::class, 'paymentPlansDelete'])->name('delete');
                             Route::post('/save', [AdminController::class, 'paymentPlansSave'])->name('save');
                         });
+
                         //Payment Gateways
                         Route::prefix('paymentGatewaysadd')->name('paymentGateways.')->group(function () {
                             Route::get('/', [GatewayController::class, 'paymentGateways'])->name('index');
@@ -532,10 +588,31 @@ Route::group([
                         Route::post('/bottom-line', [AdminController::class, 'howitWorksBottomLineSave']);
                     });
 
+                    Route::group([
+                        'prefix' => 'config',
+                        'as'     => 'config.',
+                    ], function () {
+                        Route::post('smtp/test', [SmtpController::class, 'test'])->name('smtp.test');
+                        Route::resource('more', MoreController::class)->only(['index', 'store']);
+                        Route::resource('seo', SeoController::class)->only(['index', 'store']);
+                        Route::resource('ai-tools', AiToolsController::class)->only(['index', 'store']);
+                        Route::resource('finance', FinanceController::class)->only(['index', 'store']);
+                        Route::resource('smtp', SmtpController::class)->only(['index', 'store']);
+                        Route::resource('login', LoginController::class)->only(['index', 'store']);
+                        Route::resource('gdpr', GdprController::class)->only(['index', 'store']);
+                        Route::resource('storage', StorageController::class)->only(['index', 'store']);
+                        Route::resource('branding', BrandingController::class)->only(['index', 'store']);
+                        Route::post('branding/favicon', [BrandingController::class, 'favicon'])->name('branding.favicon');
+                        Route::resource('', GeneralController::class)->parameter('', 'id')->only(['index']);
+                    });
+
                     //Settings
                     Route::prefix('settings')->name('settings.')->group(function () {
                         Route::get('/general', [SettingsController::class, 'general'])->name('general');
                         Route::post('/general-save', [SettingsController::class, 'generalSave']);
+
+                        Route::get('searchapi', [SearchapiSettingController::class, 'index'])->name('searchapi');
+                        Route::post('searchapi', [SearchapiSettingController::class, 'update']);
 
                         Route::get('/openai', [SettingsController::class, 'openai'])->name('openai');
                         Route::get('/openai/test', [SettingsController::class, 'openaiTest'])->name('openai.test');
@@ -574,44 +651,19 @@ Route::group([
                         Route::get('/serperapi/test', [SettingsController::class, 'serperapiTest'])->name('serperapi.test');
                         Route::post('/serperapi-save', [SettingsController::class, 'serperapiSave']);
 
-                        Route::get('/clipdrop', [SettingsController::class, 'clipdrop'])->name('clipdrop');
-                        //					Route::get('/clipdrop/test', [SettingsController::class, 'clipdropTest'])->name('clipdrop.test');
-                        Route::post('/clipdrop-save', [SettingsController::class, 'clipdropSave']);
-
                         Route::get('/tts', [SettingsController::class, 'tts'])->name('tts');
                         Route::post('/tts-save', [SettingsController::class, 'ttsSave']);
-
-                        Route::get('/synthesia', [SettingsController::class, 'synthesia'])->name('synthesia');
-                        Route::post('/synthesia-save', [SettingsController::class, 'synthesiaSave']);
-
-                        Route::get('/pebblely', [SettingsController::class, 'pebblely'])->name('pebblely');
-                        Route::post('/pebblely-save', [SettingsController::class, 'pebblelySave']);
-
-                        Route::get('/invoice', [SettingsController::class, 'invoice'])->name('invoice');
-                        Route::post('/invoice-save', [SettingsController::class, 'invoiceSave']);
 
                         Route::get('/payment', [SettingsController::class, 'payment'])->name('payment');
                         Route::post('/payment-save', [SettingsController::class, 'paymentSave']);
 
-                        Route::get('/affiliate', [SettingsController::class, 'affiliate'])->name('affiliate');
-                        Route::post('/affiliate-save', [SettingsController::class, 'affiliateSave']);
                         Route::post('/affiliate-status-save/{id}', [SettingsController::class, 'affiliateStatusSave']);
-
-                        Route::get('/smtp', [SettingsController::class, 'smtp'])->name('smtp');
-                        Route::post('/smtp-save', [SettingsController::class, 'smtpSave']);
-                        Route::post('/smtp-test', [SettingsController::class, 'smtpTest'])->name('smtp.test');
-
-                        Route::get('/gdpr', [SettingsController::class, 'gdpr'])->name('gdpr');
-                        Route::post('/gdpr-save', [SettingsController::class, 'gdprSave']);
 
                         Route::get('/privacy', [SettingsController::class, 'privacy'])->name('privacy');
                         Route::post('/privacy-save', [SettingsController::class, 'privacySave']);
 
                         Route::post('/get-privacy-terms-content', [SettingsController::class, 'getPrivacyTermsContent']);
                         Route::post('/get-meta-content', [SettingsController::class, 'getMetaContent']);
-
-                        Route::get('/storage', [SettingsController::class, 'storage'])->name('storage');
-                        Route::post('/storage-save', [SettingsController::class, 'storagesave']);
                     });
 
                     //Affiliates
@@ -718,7 +770,7 @@ Route::group([
 
             //Support Area
             Route::prefix('support')->name('support.')->group(function () {
-                Route::get('/my-requests', [SupportController::class, 'list'])->name('list');
+                Route::get('/my-requests', [SupportController::class, 'list'])->name('list')->middleware(CheckTemplateTypeAndPlan::class);
                 Route::get('/new-support-request', [SupportController::class, 'newTicket'])->name('new');
                 Route::post('/new-support-request/send', [SupportController::class, 'newTicketSend']);
 
@@ -747,8 +799,6 @@ Route::group([
                     // delete email template route
                     Route::get('email-templates/{id}/delete', [EmailTemplatesController::class, 'delete'])
                         ->name('email-templates.destroy');
-
-                    Route::resource('introductions', IntroductionController::class)->only(['index', 'store']);
 
                     //Blog
                     Route::prefix('blog')->name('blog.')->group(function () {
@@ -794,7 +844,7 @@ Route::group([
 
         //setLocale
         Route::get('setLocale', function (\Illuminate\Http\Request $request) {
-            $settings_two = \App\Models\SettingTwo::first();
+            $settings_two = \App\Models\SettingTwo::getCache();
             $settings_two->languages_default = $request->setLocale;
             $settings_two->save();
             LaravelLocalization::setLocale($request->setLocale);
@@ -805,7 +855,8 @@ Route::group([
 
     Route::post('translations/lang/update/{id}', '\Elseyyid\LaravelJsonLocationsManager\Controllers\HomeController@update')->name('elseyyid.translations.lang.update');
 
-    Route::post('translations/lang/update-all', [CommonController::class, 'translationsLangUpdateAll'])->name('elseyyid.translations.lang.update-all');
+    Route::post('translations/lang/update-all', [CommonController::class, 'translationsLangUpdateAll'])
+        ->name('elseyyid.translations.lang.update-all');
 
     Route::post('translations/lang-save', [CommonController::class, 'translationsLangSave'])->name('elseyyid.translations.lang.lang-save');
 
@@ -828,11 +879,20 @@ Route::group([
                 $currentDebugValue = env('APP_DEBUG', false);
                 $newDebugValue = ! $currentDebugValue;
                 $envContent = file_get_contents(base_path('.env'));
-                $envContent = preg_replace('/^APP_DEBUG=.*/m', 'APP_DEBUG='.($newDebugValue ? 'true' : 'false'), $envContent);
+                $envContent = preg_replace('/^APP_DEBUG=.*/m', 'APP_DEBUG=' . ($newDebugValue ? 'true' : 'false'), $envContent);
                 file_put_contents(base_path('.env'), $envContent);
                 Artisan::call('config:clear');
 
                 return redirect()->back()->with('message', 'Debug mode updated successfully.');
+            });
+
+            Route::get('/check-vip-status', static function () {
+                return response()->json([
+                    'showIntercom' => \App\Helpers\Classes\Helper::showIntercomForVipMembership(),
+                ]);
+            });
+            Route::get('/vip-intercom-partial', static function () {
+                return view('panel.layout.includes.vip-intercom');
             });
         });
 

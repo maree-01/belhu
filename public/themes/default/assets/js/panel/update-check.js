@@ -11,7 +11,7 @@
 			if ( !cache ) {
 				$.ajax( {
 					type: 'GET',
-					url: '/magicai.updater.check',
+					url: '/updater/check',
 					async: false,
 					success: function ( response ) {
 						if ( response != '' ) {

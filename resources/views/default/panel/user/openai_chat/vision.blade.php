@@ -88,14 +88,17 @@
                         <div
                             class="chat-content-container group relative mb-[7px] max-w-[calc(100%-64px)] rounded-[2em] border-none bg-[#F3E2FD] text-[#090A0A] dark:bg-[rgba(var(--tblr-primary-rgb),0.3)] dark:text-white">
                             <div class="chat-content px-[1.5rem] py-[0.75rem]"></div>
-                            <button
-                                class="lqd-clipboard-copy size-10 pointer-events-auto invisible absolute -start-5 bottom-0 inline-flex items-center justify-center rounded-full border-none bg-white p-0 text-black opacity-0 !shadow-lg transition-all hover:-translate-y-[2px] hover:scale-110 group-hover:!visible group-hover:!opacity-100"
-                                data-copy-options='{ "content": ".chat-content", "contentIn": "<.chat-content-container" }'
-                                title="{{ __('Copy to clipboard') }}"
-                            >
-                                <span class="sr-only">{{ __('Copy to clipboard') }}</span>
-                                <x-tabler-copy class="size-4" />
-                            </button>
+                            <div
+                                class="lqd-clipboard-copy-wrap group/copy-wrap pointer-events-auto invisible absolute -start-5 bottom-0 opacity-0 transition-all group-hover:!visible group-hover:!opacity-100">
+                                <button
+                                    class="lqd-clipboard-copy inline-flex h-10 w-10 items-center justify-center rounded-full border-none bg-white p-0 text-black !shadow-lg transition-all hover:-translate-y-[2px] hover:scale-110"
+                                    data-copy-options='{ "content": ".chat-content", "contentIn": "<.chat-content-container" }'
+                                    title="{{ __('Copy to clipboard') }}"
+                                >
+                                    <span class="sr-only">{{ __('Copy to clipboard') }}</span>
+                                    <x-tabler-copy class="size-4" />
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </template>
@@ -119,14 +122,17 @@
                             </div>
                             <pre
                                 class="chat-content relative m-0 w-full whitespace-pre-wrap bg-transparent px-[1.5rem] py-[0.75rem] indent-0 font-[inherit] text-[1em] font-normal text-inherit [word-break:break-word] empty:!hidden"></pre>
-                            <button
-                                class="lqd-clipboard-copy size-10 pointer-events-auto invisible absolute -end-5 bottom-0 inline-flex items-center justify-center rounded-full border-none bg-white p-0 text-black opacity-0 !shadow-lg transition-all hover:-translate-y-[2px] hover:scale-110 group-hover:!visible group-hover:!opacity-100"
-                                data-copy-options='{ "content": ".chat-content", "contentIn": "<.chat-content-container" }'
-                                title="{{ __('Copy to clipboard') }}"
-                            >
-                                <span class="sr-only">{{ __('Copy to clipboard') }}</span>
-                                <x-tabler-copy class="size-4" />
-                            </button>
+                            <div
+                                class="lqd-clipboard-copy-wrap group/copy-wrap pointer-events-auto invisible absolute -end-5 bottom-0 opacity-0 transition-all group-hover:!visible group-hover:!opacity-100">
+                                <button
+                                    class="lqd-clipboard-copy inline-flex h-10 w-10 items-center justify-center rounded-full border-none bg-white p-0 text-black !shadow-lg transition-all hover:-translate-y-[2px] hover:scale-110"
+                                    data-copy-options='{ "content": ".chat-content", "contentIn": "<.chat-content-container" }'
+                                    title="{{ __('Copy to clipboard') }}"
+                                >
+                                    <span class="sr-only">{{ __('Copy to clipboard') }}</span>
+                                    <x-tabler-copy class="size-4" />
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </template>

@@ -3,11 +3,14 @@
 namespace App\Services\PaymentGateways;
 
 use App\Actions\CreateActivity;
+use App\Enums\Plan\FrequencyEnum;
 use App\Models\GatewayProducts;
-use App\Models\PaymentPlans;
+use App\Models\Plan;
 // use App\Models\Subscriptions;
 use App\Models\User;
 use App\Models\UserOrder;
+use App\Services\PaymentGateways\Contracts\CreditUpdater;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -33,6 +36,8 @@ use Laravel\Cashier\Subscription as Subscriptions;
  */
 class FreeService
 {
+    use CreditUpdater;
+
     protected static $GATEWAY_CODE = 'freeservice';
 
     protected static $GATEWAY_NAME = 'Free';
@@ -42,20 +47,20 @@ class FreeService
         try {
             $productData = GatewayProducts::where(['plan_id' => $plan->id, 'gateway_code' => self::$GATEWAY_CODE])->first();
             if ($productData == null) {
-                $product = new GatewayProducts();
+                $product = new GatewayProducts;
                 $product->plan_id = $plan->id;
                 $product->plan_name = $plan->name;
                 $product->gateway_code = self::$GATEWAY_CODE;
                 $product->gateway_title = self::$GATEWAY_NAME;
-                $product->product_id = 'FPP-'.strtoupper(Str::random(13));
+                $product->product_id = 'FPP-' . strtoupper(Str::random(13));
                 $product->price_id = 'Not Needed';
                 $product->save();
             } else {
                 $productData->plan_name = $plan->name;
                 $productData->save();
             }
-        } catch (\Exception $ex) {
-            Log::error(self::$GATEWAY_CODE.'-> saveProduct(): '.$ex->getMessage());
+        } catch (Exception $ex) {
+            Log::error(self::$GATEWAY_CODE . '-> saveProduct(): ' . $ex->getMessage());
 
             return back()->with(['message' => $ex->getMessage(), 'type' => 'error']);
         }
@@ -66,17 +71,18 @@ class FreeService
         if ($plan->price != 0) {
             abort(404);
         }
+
         try {
             $user = auth()->user();
             $product = GatewayProducts::where(['plan_id' => $plan->id, 'gateway_code' => self::$GATEWAY_CODE])->first();
             if ($product == null) {
                 self::saveProduct($plan);
             }
-            $order_id = 'FPS-'.strtoupper(Str::random(13));
+            $order_id = 'FPS-' . strtoupper(Str::random(13));
 
-            return view('panel.user.finance.subscription.'.self::$GATEWAY_CODE, compact('plan', 'order_id'));
-        } catch (\Exception $th) {
-            Log::error(self::$GATEWAY_CODE.'-> subscribe(): '.$th->getMessage());
+            return view('panel.user.finance.subscription.' . self::$GATEWAY_CODE, compact('plan', 'order_id'));
+        } catch (Exception $th) {
+            Log::error(self::$GATEWAY_CODE . '-> subscribe(): ' . $th->getMessage());
 
             return back()->with(['message' => Str::before($th->getMessage(), ':'), 'type' => 'error']);
         }
@@ -89,24 +95,29 @@ class FreeService
         $couponID = $request->input('couponID', null);
 
         $user = auth()->user();
-        $plan = PaymentPlans::find($planID) ?? abort(404);
+        $plan = Plan::find($planID) ?? abort(404);
         $total = $plan->price;
 
         switch ($plan->frequency) {
-            case 'monthly':
+            case FrequencyEnum::MONTHLY->value:
                 $previousPeriod = now()->subMonth();
+
                 break;
-            case 'yearly':
+            case FrequencyEnum::YEARLY->value:
                 $previousPeriod = now()->subYear();
+
                 break;
-            case 'lifetime_monthly':
+            case FrequencyEnum::LIFETIME_MONTHLY->value:
                 $previousPeriod = now()->subMonth();
+
                 break;
-            case 'lifetime_yearly':
+            case FrequencyEnum::LIFETIME_YEARLY->value:
                 $previousPeriod = now()->subYear();
+
                 break;
             default:
                 $previousPeriod = now()->subMonth();
+
                 break;
         }
         $existingOrder = UserOrder::where('user_id', $user->id)
@@ -120,7 +131,7 @@ class FreeService
 
         try {
             DB::beginTransaction();
-            $subscription = new Subscriptions();
+            $subscription = new Subscriptions;
             $subscription->user_id = $user->id;
             $subscription->name = $plan->id;
             $subscription->stripe_id = $orderID;
@@ -129,25 +140,30 @@ class FreeService
             $subscription->quantity = 1;
             $subscription->trial_ends_at = null;
             switch ($plan->frequency) {
-                case 'monthly':
+                case FrequencyEnum::MONTHLY->value:
                     $subscription->ends_at = \Carbon\Carbon::now()->addMonths(1);
                     $subscription->auto_renewal = 1;
+
                     break;
-                case 'yearly':
+                case FrequencyEnum::YEARLY->value:
                     $subscription->ends_at = \Carbon\Carbon::now()->addYears(1);
                     $subscription->auto_renewal = 1;
+
                     break;
-                case 'lifetime_monthly':
+                case FrequencyEnum::LIFETIME_MONTHLY->value:
                     $subscription->ends_at = \Carbon\Carbon::now()->addMonths(1); //ends each month but auto renewing without payment reqs
                     $subscription->auto_renewal = 1;
+
                     break;
-                case 'lifetime_yearly':
+                case FrequencyEnum::LIFETIME_YEARLY->value:
                     $subscription->ends_at = \Carbon\Carbon::now()->addYears(1); //ends each year but auto renewing without payment reqs
                     $subscription->auto_renewal = 1;
+
                     break;
                 default:
                     $subscription->ends_at = \Carbon\Carbon::now()->addDays(30);
                     $subscription->auto_renewal = 1;
+
                     break;
             }
             $subscription->tax_rate = 0;
@@ -158,7 +174,7 @@ class FreeService
             $subscription->paid_with = self::$GATEWAY_CODE;
             $subscription->save();
 
-            $order = new UserOrder();
+            $order = new UserOrder;
             $order->order_id = $orderID;
             $order->plan_id = $plan->id;
             $order->user_id = $user->id;
@@ -172,14 +188,13 @@ class FreeService
             $order->tax_value = 0;
             $order->save();
 
-            $order->plan->total_words == -1 ? ($order->user->remaining_words = -1) : ($order->user->remaining_words += $order->plan->total_words);
-            $order->plan->total_images == -1 ? ($order->user->remaining_images = -1) : ($order->user->remaining_images += $order->plan->total_images);
-            $order->user->save();
+            self::creditIncreaseSubscribePlan($user, $plan);
+
             // sent mail if required here later
-            CreateActivity::for($order->user, __('Purchased'), $order->plan->name.' '.__('Plan').' '.__('For free'));
-        } catch (\Exception $th) {
+            CreateActivity::for($order->user, __('Purchased'), $order->plan->name . ' ' . __('Plan') . ' ' . __('For free'));
+        } catch (Exception $th) {
             DB::rollBack();
-            Log::error(self::$GATEWAY_CODE.'-> subscribe(): '.$th->getMessage());
+            Log::error(self::$GATEWAY_CODE . '-> subscribe(): ' . $th->getMessage());
 
             return back()->with(['message' => Str::before($th->getMessage(), ':'), 'type' => 'error']);
         }
@@ -187,7 +202,7 @@ class FreeService
 
         return redirect()->route('dashboard.user.payment.succesful')->with([
             'message' => __('Thank you for your purchase. Enjoy your remaining words and images.'),
-            'type' => 'success',
+            'type'    => 'success',
         ]);
     }
 
@@ -196,6 +211,7 @@ class FreeService
         if ($plan->price != 0) {
             abort(404);
         }
+
         try {
             $user = auth()->user();
             $product = GatewayProducts::where(['plan_id' => $plan->id, 'gateway_code' => self::$GATEWAY_CODE])->first();
@@ -209,12 +225,12 @@ class FreeService
             if ($existingPrepaidOrder) {
                 $order_id = $existingPrepaidOrder->order_id;
             } else {
-                $order_id = 'FPO-'.strtoupper(Str::random(13));
+                $order_id = 'FPO-' . strtoupper(Str::random(13));
             }
 
-            return view('panel.user.finance.prepaid.'.self::$GATEWAY_CODE, compact('plan', 'order_id', 'existingPrepaidOrder'));
-        } catch (\Exception $th) {
-            Log::error(self::$GATEWAY_CODE.'-> prepaid(): '.$th->getMessage());
+            return view('panel.user.finance.prepaid.' . self::$GATEWAY_CODE, compact('plan', 'order_id', 'existingPrepaidOrder'));
+        } catch (Exception $th) {
+            Log::error(self::$GATEWAY_CODE . '-> prepaid(): ' . $th->getMessage());
 
             return back()->with(['message' => Str::before($th->getMessage(), ':'), 'type' => 'error']);
         }
@@ -227,7 +243,7 @@ class FreeService
         $couponID = $request->input('couponID', null);
 
         $user = auth()->user();
-        $plan = PaymentPlans::find($planID) ?? abort(404);
+        $plan = Plan::find($planID) ?? abort(404);
         $total = $plan->price;
 
         $existingPrepaidOrder = UserOrder::where('user_id', $user->id)
@@ -238,9 +254,10 @@ class FreeService
         if ($existingPrepaidOrder) {
             return back()->with(['message' => __('This pack alredy purchased'), 'type' => 'error']);
         }
+
         try {
             DB::beginTransaction();
-            $order = new UserOrder();
+            $order = new UserOrder;
             $order->order_id = $orderID;
             $order->plan_id = $plan->id;
             $order->user_id = $user->id;
@@ -254,14 +271,12 @@ class FreeService
             $order->tax_value = 0;
             $order->save();
 
-            $order->plan->total_words == -1 ? ($order->user->remaining_words = -1) : ($order->user->remaining_words += $order->plan->total_words);
-            $order->plan->total_images == -1 ? ($order->user->remaining_images = -1) : ($order->user->remaining_images += $order->plan->total_images);
-            $order->user->save();
+            self::creditIncreaseSubscribePlan($user, $plan);
             // sent mail if required here later
-            CreateActivity::for($order->user, __('Purchased'), $order->plan->name.' '.__('Plan').' '.__('For free'));
-        } catch (\Exception $th) {
+            CreateActivity::for($order->user, __('Purchased'), $order->plan->name . ' ' . __('Plan') . ' ' . __('For free'));
+        } catch (Exception $th) {
             DB::rollBack();
-            Log::error(self::$GATEWAY_CODE.'-> subscribe(): '.$th->getMessage());
+            Log::error(self::$GATEWAY_CODE . '-> subscribe(): ' . $th->getMessage());
 
             return back()->with(['message' => Str::before($th->getMessage(), ':'), 'type' => 'error']);
         }
@@ -269,7 +284,7 @@ class FreeService
 
         return redirect()->route('dashboard.user.payment.succesful')->with([
             'message' => __('Thank you for your purchase. Enjoy your remaining words and images.'),
-            'type' => 'success',
+            'type'    => 'success',
         ]);
     }
 
@@ -306,13 +321,9 @@ class FreeService
         $user = $internalUser ?? Auth::user();
         $activeSub = getCurrentActiveSubscription($user->id);
         if ($activeSub != null) {
-            $plan = PaymentPlans::where('id', $activeSub->plan_id)->first();
+            $plan = Plan::where('id', $activeSub->plan_id)->first();
 
-            $recent_words = $user->remaining_words - $plan->total_words;
-            $recent_images = $user->remaining_images - $plan->total_images;
-            $user->remaining_words = $recent_words < 0 ? 0 : $recent_words;
-            $user->remaining_images = $recent_images < 0 ? 0 : $recent_images;
-            $user->save();
+            self::creditDecreaseCancelPlan($user, $plan);
 
             $activeSub->stripe_status = 'free_canceled';
             $activeSub->save();
@@ -346,20 +357,27 @@ class FreeService
     {
         try {
             $order = UserOrder::where('order_id', $subscription->stripe_id)->first();
-            $recent_words = $order->user->remaining_words - $order->plan->total_words;
-            $recent_images = $order->user->remaining_images - $order->plan->total_images;
-            $order->user->remaining_words = $recent_words < 0 ? 0 : $recent_words;
-            $order->user->remaining_images = $recent_images < 0 ? 0 : $recent_images;
-            $order->user->save();
+
+            /**
+             * @var Plan $plan
+             */
+            $plan = $order->plan;
+
+            /**
+             * @var User $user
+             */
+            $user = $order->user;
+
+            self::creditDecreaseCancelPlan($user, $plan);
 
             $subscription->stripe_status = 'free_canceled';
             $subscription->save();
             // sent mail if required here later
-            CreateActivity::for($order->user, __('Subscription canceled due to plan deletion.'), $order->plan->name.' '.__('Plan'));
+            CreateActivity::for($order->user, __('Subscription canceled due to plan deletion.'), $order->plan->name . ' ' . __('Plan'));
 
             return true;
-        } catch (\Exception $th) {
-            Log::error(self::$GATEWAY_CODE.' cancelSubscribedPlan(): '.$th->getMessage()."\n------------------------\n");
+        } catch (Exception $th) {
+            Log::error(self::$GATEWAY_CODE . ' cancelSubscribedPlan(): ' . $th->getMessage() . "\n------------------------\n");
 
             return false;
         }

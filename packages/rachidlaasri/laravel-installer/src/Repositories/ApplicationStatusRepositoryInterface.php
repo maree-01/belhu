@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 
 interface ApplicationStatusRepositoryInterface
 {
-    public function financePage(): string;
+    public function financePage(string $view = 'panel.admin.finance.gateways.particles.finance'): string;
 
     public function financeLicense(): bool;
 
@@ -19,7 +19,7 @@ interface ApplicationStatusRepositoryInterface
 
     public function getVariable(string $key);
 
-    public function generate(Request $request): void;
+    public function generate(Request $request): bool;
 
     public function setLicense(): void;
 

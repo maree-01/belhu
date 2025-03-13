@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\Plan\FrequencyEnum;
+use App\Enums\Roles;
 use App\Models\Chatbot\Chatbot;
+use App\Models\Concerns\User\HasCredit;
 use App\Models\Integration\UserIntegration;
 use App\Models\Team\Team;
 use App\Models\Team\TeamMember;
@@ -17,14 +19,18 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 use Laravel\Cashier\Billable;
-use Laravel\Cashier\Subscription;
-// use Laravel\Sanctum\HasApiTokens;
 use Laravel\Cashier\Subscription as Subscriptions;
 use Laravel\Passport\HasApiTokens;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use Billable, HasApiTokens, HasFactory, Notifiable;
+    use Billable;
+    use HasApiTokens;
+    use HasCredit;
+    use HasFactory;
+    use HasRoles;
+    use Notifiable;
 
     protected $fillable = [
         'coingate_subscriber_id',
@@ -33,11 +39,11 @@ class User extends Authenticatable
         'name',
         'surname',
         'email',
+        'country',
+        'type',
         'password',
         'affiliate_id',
         'affiliate_code',
-        'remaining_words',
-        'remaining_images',
         'email_confirmation_code',
         'email_confirmed',
         'password_reset_code',
@@ -45,6 +51,7 @@ class User extends Authenticatable
         'api_keys',
         'defi_setting',
         'affiliate_status',
+        'entity_credits',
     ];
 
     protected $hidden = [
@@ -56,7 +63,9 @@ class User extends Authenticatable
 
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'defi_setting' => 'json',
+        'defi_setting'      => 'json',
+        'type'              => Roles::class,
+        'entity_credits'    => 'array',
     ];
 
     public function isConfirmed(): bool
@@ -66,20 +75,25 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return $this->type === 'admin';
+        return in_array($this->type, [Roles::SUPER_ADMIN, Roles::ADMIN], true);
     }
 
-    protected static function boot()
+    public function isSuperAdmin(): bool
+    {
+        return $this->type === Roles::SUPER_ADMIN;
+    }
+
+    protected static function boot(): void
     {
         parent::boot();
 
-        static::created(function ($user) {
-            // Setting::query()->increment('user_count');
-			Usage::getSingle()->updateUserCount(1);
+        static::deleting(static function ($user) {
+            $user->orders()->delete();
         });
-		static::deleted(function ($user) {
-			$user->orders()->delete();
-		});
+
+        static::deleted(static function ($user) {
+            $user->orders()->delete();
+        });
     }
 
     public function integrations(): HasMany
@@ -89,7 +103,7 @@ class User extends Authenticatable
 
     public function isUser(): bool
     {
-        return $this->type == 'user';
+        return $this->type === Roles::USER;
     }
 
     public function teamManager(): BelongsTo
@@ -120,68 +134,29 @@ class User extends Authenticatable
     public function relationPlan()
     {
         return $this->hasOneThrough(
-            PaymentPlans::class,
+            Plan::class,
             Subscriptions::class,
             'user_id',
             'id',
             'id',
             'plan_id'
-        );
-    }
-
-    public function getRemainingWordsAttribute($value)
-    {
-        if ($this->type == 'admin') {
-            return $value;
-        }
-
-        if ($this->team_id == null) {
-            return $value;
-        }
-
-        $teamMember = $this->teamMember;
-
-        if (! $teamMember) {
-            return $value;
-        }
-
-        if ($teamMember?->allow_unlimited_credits) {
-            return $this->teamManager->remaining_words;
-        } else {
-            return $this->teamMember->remaining_words;
-        }
-
-        return $value;
-    }
-
-    public function getRemainingImagesAttribute($value)
-    {
-        if ($this->type == 'admin') {
-            return $value;
-        }
-
-        if ($this->team_id == null) {
-            return $value;
-        }
-
-        $teamMember = $this->teamMember;
-
-        if (! $teamMember) {
-            return $value;
-        }
-
-        if ($teamMember?->allow_unlimited_credits) {
-            return $this->teamManager->remaining_images;
-        } else {
-            return $this->teamMember->remaining_images;
-        }
-
-        return $value;
+        )->whereIn('stripe_status', [
+            'active',
+            'trialing',
+            'bank_approved',
+            'banktransfer_approved',
+            'bank_renewed',
+            'free_approved',
+            'stripe_approved',
+            'paypal_approved',
+            'iyzico_approved',
+            'paystack_approved',
+        ]);
     }
 
     public function fullName(): string
     {
-        return $this->name.' '.$this->surname;
+        return $this->name . ' ' . $this->surname;
     }
 
     public function email()
@@ -215,41 +190,41 @@ class User extends Authenticatable
         // Get current active subscription
         $activeSub = getCurrentActiveSubscription($userId);
         if ($activeSub != null) {
-            $plan = PaymentPlans::where('id', $activeSub->plan_id)->first();
-            if ($plan == null) {
+            $plan = Plan::where('id', $activeSub->plan_id)->first();
+            if (is_null($plan)) {
                 return null;
             }
             $difference = $activeSub->updated_at->diffInDays(Carbon::now());
-            if ($plan->frequency == 'monthly') {
+            if ($plan->frequency === FrequencyEnum::MONTHLY->value) {
                 if ($difference < 31) {
                     return $plan;
                 }
-            } elseif ($plan->frequency == 'yearly') {
+            } elseif ($plan->frequency === FrequencyEnum::YEARLY->value) {
                 if ($difference < 365) {
                     return $plan;
                 }
-            }else{
-				return $plan;
-			}
+            } else {
+                return $plan;
+            }
         } else {
             $activeSub = getCurrentActiveSubscriptionYokkasa($userId);
             if ($activeSub != null) {
-                $plan = PaymentPlans::where('id', $activeSub->plan_id)->first();
-                if ($plan == null) {
+                $plan = Plan::where('id', $activeSub->plan_id)->first();
+                if (is_null($plan)) {
                     return null;
                 }
                 $difference = $activeSub->updated_at->diffInDays(Carbon::now());
-                if ($plan->frequency == 'monthly' || $plan->frequency == 'lifetime_monthly') {
+                if ($plan->frequency == FrequencyEnum::MONTHLY->value || $plan->frequency == FrequencyEnum::LIFETIME_MONTHLY->value) {
                     if ($difference < 31) {
                         return $plan;
                     }
-                } elseif ($plan->frequency == 'yearly' || $plan->frequency == 'lifetime_yearly') {
+                } elseif ($plan->frequency == FrequencyEnum::YEARLY->value || $plan->frequency == FrequencyEnum::LIFETIME_YEARLY->value) {
                     if ($difference < 365) {
                         return $plan;
                     }
-                }else{
-					return $plan;
-				}
+                } else {
+                    return $plan;
+                }
             } else {
                 return null;
             }
@@ -294,14 +269,14 @@ class User extends Authenticatable
     public function getAvatar()
     {
         if ($this->avatar == null) {
-            return '<span class="avatar">'.Str::upper(substr($this->name, 0, 1)).Str::upper(substr($this->surname, 0, 1)).'</span>';
+            return '<span class="avatar">' . Str::upper(substr($this->name, 0, 1)) . Str::upper(substr($this->surname, 0, 1)) . '</span>';
         } else {
             $avatar = $this->avatar;
             if (strpos($avatar, 'http') === false || strpos($avatar, 'https') === false) {
-                $avatar = '/'.$avatar;
+                $avatar = '/' . $avatar;
             }
 
-            return ' <span class="avatar" style="background-image: url('.custom_theme_url($avatar).')"></span>';
+            return ' <span class="avatar" style="background-image: url(' . custom_theme_url($avatar) . ')"></span>';
         }
     }
 
@@ -313,8 +288,8 @@ class User extends Authenticatable
 
     public function twitterSettings()
     {
-        if (class_exists(\App\Models\Automation\TwitterSettings::class)) {
-            return $this->hasMany(\App\Models\Automation\TwitterSettings::class);
+        if (class_exists(\App\Extensions\AISocialMedia\System\Models\TwitterSettings::class)) {
+            return $this->hasMany(\App\Extensions\AISocialMedia\System\Models\TwitterSettings::class);
         }
 
         return null;
@@ -322,8 +297,8 @@ class User extends Authenticatable
 
     public function linkedinSettings()
     {
-        if (class_exists(\App\Models\Automation\LinkedinTokens::class)) {
-            return $this->hasMany(\App\Models\Automation\LinkedinTokens::class);
+        if (class_exists(\App\Extensions\AISocialMedia\System\Models\LinkedinTokens::class)) {
+            return $this->hasMany(\App\Extensions\AISocialMedia\System\Models\LinkedinTokens::class);
         }
 
         return null;
@@ -331,8 +306,8 @@ class User extends Authenticatable
 
     public function scheduledPosts()
     {
-        if (class_exists(\App\Models\Automation\ScheduledPosts::class)) {
-            return $this->hasMany(\App\Models\Automation\ScheduledPosts::class);
+        if (class_exists(\App\Extensions\AISocialMedia\System\Models\ScheduledPost::class)) {
+            return $this->hasMany(\App\Extensions\AISocialMedia\System\Models\ScheduledPost::class);
         }
 
         return null;
@@ -362,5 +337,10 @@ class User extends Authenticatable
     public function chatbots(): HasMany
     {
         return $this->hasMany(Chatbot::class, 'user_id');
+    }
+
+    public function externalChatbots(): HasMany
+    {
+        return $this->hasMany(\App\Extensions\Chatbot\System\Models\Chatbot::class, 'user_id');
     }
 }

@@ -64,8 +64,7 @@
         setSearchPromptStr(str) { this.searchPromptStr = str.trim().toLowerCase() },
         setPrompt(prompt) { this.prompt = prompt },
         focusOnPrompt() { $nextTick(() => $refs.prompt.focus()) },
-    
-        activeGenerator: 'dall-e',
+        activeGenerator: '{{ setting('dalle_hidden', 0) == 1 ? 'stable_diffusion' : 'openai' }}',
         changeActiveGenerator(tab) {
             if (tab === this.activeGenerator) return;
             if (!document.startViewTransition) {
@@ -92,146 +91,147 @@
     }"
 >
     <div class="mb-5 flex flex-wrap justify-between">
-        <div class="lqd-image-generator-tabs-nav flex gap-1">
-            <x-button
-                class="lqd-image-generator-tabs-trigger active py-2 text-2xs font-bold text-heading-foreground hover:shadow-none [&.active]:bg-foreground/10"
-                data-generator-name="dall-e"
-                tag="button"
-                type="button"
-                variant="ghost"
-                x-data
-                ::class="{ 'active': activeGenerator === 'dall-e' }"
-                x-bind:data-active="activeGenerator === 'dall-e'"
-                @click="changeActiveGenerator('dall-e')"
-            >
-                {{ __('DALL-E') }}
-            </x-button>
-            @if (setting('stable_hidden', 0) != 1)
+        <div class="lqd-image-generator-tabs-nav flex gap-1 self-center">
+            @if (setting('dalle_hidden', 0) != 1)
                 <x-button
-                    class="lqd-image-generator-tabs-trigger py-2 text-2xs font-bold text-heading-foreground hover:shadow-none [&.active]:bg-foreground/10"
-                    data-generator-name="stablediffusion"
+                    class="lqd-image-generator-tabs-trigger active py-2 text-2xs font-bold text-heading-foreground hover:shadow-none [&.active]:bg-foreground/10"
+                    data-generator-name="openai"
                     tag="button"
                     type="button"
                     variant="ghost"
                     x-data
-                    ::class="{ 'active': activeGenerator === 'stablediffusion' }"
-                    x-bind:data-active="activeGenerator === 'stablediffusion'"
-                    @click="changeActiveGenerator('stablediffusion')"
+                    ::class="{ 'active': activeGenerator === 'openai' }"
+                    x-bind:data-active="activeGenerator === 'openai'"
+                    @click="changeActiveGenerator('openai')"
+                >
+                    {{ __('DALL-E') }}
+                </x-button>
+            @endif
+            @if (setting('stable_hidden', 0) != 1)
+                <x-button
+                    class="lqd-image-generator-tabs-trigger py-2 text-2xs font-bold text-heading-foreground hover:shadow-none [&.active]:bg-foreground/10"
+                    data-generator-name="stable_diffusion"
+                    tag="button"
+                    type="button"
+                    variant="ghost"
+                    x-data
+                    ::class="{ 'active': activeGenerator === 'stable_diffusion' }"
+                    x-bind:data-active="activeGenerator === 'stable_diffusion'"
+                    @click="changeActiveGenerator('stable_diffusion')"
                 >
                     {{ __('Stable Diffusion') }}
                 </x-button>
             @endif
+            @if (\App\Helpers\Classes\Helper::setFalAIKey())
+                @includeFirst(['flux-pro::flux-pro-tab', 'panel.user.openai.includes.flux-pro-tab', 'vendor.empty'])
+            @endif
         </div>
-
-        <div class="max-sm:-order-1 max-sm:mb-4 max-sm:w-full">
-            <x-remaining-credit
-                class="text-2xs"
-                class:progressbar-image="bg-[#9E9EFF]"
-                class:legend-image-box="bg-[#9E9EFF]"
-                progress-height="sm"
-                legend-size="sm"
-                style="inline"
+        <div class="md:min-w-96 max-sm:-order-1 max-sm:mb-4 max-sm:w-full">
+            <x-credit-list
+                class:legend-image-box="bg-primary/20 dark:bg-secondary"
+                class:progressbar-image="bg-primary/20 dark:bg-secondary"
+                :aiImage="true"
             />
         </div>
     </div>
-
-    <div
-        class="lqd-image-generator-tabs-content lqd-image-generator-dalle"
-        x-data
-        :class="{ 'hidden': activeGenerator !== 'dall-e' }"
-    >
-        <form
-            class="lqd-image-generator-dalle-form flex flex-col items-start gap-4"
-            id="openai_generator_form"
-            onsubmit="return sendOpenaiGeneratorForm();"
-            x-data="{ advancedSettingsShow: false }"
+    @if (setting('dalle_hidden', 0) !== 1)
+        <div
+            class="lqd-image-generator-tabs-content lqd-image-generator-dalle"
+            x-data
+            :class="{ 'hidden': activeGenerator !== 'openai' }"
         >
-            <h3
-                class="flex w-full flex-wrap items-center gap-2"
-                :class="{ 'hidden': activeGenerator === 'stablediffusion' }"
+            <form
+                class="lqd-image-generator-dalle-form flex flex-col items-start gap-4"
+                id="openai_generator_form"
+                onsubmit="return sendOpenaiGeneratorForm();"
+                x-data="{ advancedSettingsShow: false }"
             >
-                {{ __('Explain your idea') }}. |
-                <button
-                    class="lqd-image-generator-random-prompt-trigger cursor-pointer text-green-600 hover:underline"
-                    type="button"
-                    x-data
-                    @click="prompt = generateRandomPrompt()"
+                <h3
+                    class="flex w-full flex-wrap items-center gap-2"
+                    :class="{ 'hidden': activeGenerator === 'stable_diffusion' }"
                 >
-                    {{ __('Generate example prompt') }}
-                </button>
-
-                @if (setting('user_ai_image_prompt_library') == null || setting('user_ai_image_prompt_library'))
+                    {{ __('Explain your idea') }}. |
                     <button
-                        class="lqd-generator-templates-trigger size-10 flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full text-heading-foreground transition-all max-md:h-auto max-md:w-auto max-md:bg-transparent md:hover:bg-heading-background md:hover:text-heading-foreground"
+                        class="lqd-image-generator-random-prompt-trigger cursor-pointer text-green-600 hover:underline"
                         type="button"
-                        @click.prevent="togglePromptLibraryShow()"
+                        x-data
+                        @click="prompt = generateRandomPrompt()"
                     >
-                        <x-tabler-article
-                            class="size-6"
-                            stroke-width="1.5"
-                        />
-                        <span class="md:hidden">{{ __('Browse prompt library') }}</span>
+                        {{ __('Generate example prompt') }}
                     </button>
-                @endif
-            </h3>
 
-            <div class="lqd-image-generator-inputs-wrap relative w-full">
-                @foreach (json_decode($openai->questions) ?? [] as $question)
-                    @if ($question->type == 'textarea')
-                        <x-forms.input
-                            class="lqd-image-generator-prompt max-md:min-h-32 h-14 resize-none overflow-hidden rounded-full bg-background px-6 py-4 text-heading-foreground shadow-sm placeholder:text-foreground/50 max-md:rounded-md"
-                            id="{{ $question->name }}"
-                            type="textarea"
-                            name="{{ $question->name }}"
-                            x-data
-                            ::value="prompt"
-                            ::placeholder="generateRandomPrompt()"
-                        />
+                    @if (setting('user_ai_image_prompt_library') === null || setting('user_ai_image_prompt_library'))
+                        <button
+                            class="lqd-generator-templates-trigger size-10 flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full text-heading-foreground transition-all max-md:h-auto max-md:w-auto max-md:bg-transparent md:hover:bg-heading-background md:hover:text-heading-foreground"
+                            type="button"
+                            @click.prevent="togglePromptLibraryShow()"
+                        >
+                            <x-tabler-article
+                                class="size-6"
+                                stroke-width="1.5"
+                            />
+                            <span class="md:hidden">{{ __('Browse prompt library') }}</span>
+                        </button>
                     @endif
-                @endforeach
+                </h3>
+
+                <div class="lqd-image-generator-inputs-wrap relative w-full">
+                    @foreach (json_decode($openai->questions, false, 512, JSON_THROW_ON_ERROR) ?? [] as $question)
+                        @if ($question->type === 'textarea')
+                            <x-forms.input
+                                class="lqd-image-generator-prompt max-md:min-h-32 h-14 resize-none overflow-hidden rounded-full bg-background px-6 py-4 text-heading-foreground shadow-sm placeholder:text-foreground/50 max-md:rounded-md"
+                                id="{{ $question->name }}"
+                                type="textarea"
+                                name="{{ $question->name }}"
+                                x-data
+                                ::value="prompt"
+                                ::placeholder="generateRandomPrompt()"
+                            />
+                        @endif
+                    @endforeach
+                    <x-button
+                        class="absolute end-4 top-1/2 -translate-y-1/2 hover:-translate-y-1/2 hover:scale-110 max-lg:relative max-lg:right-auto max-lg:top-auto max-lg:mt-2 max-lg:w-full max-lg:translate-y-0"
+                        id="openai_generator_button"
+                        tag="button"
+                        type="submit"
+                    >
+                        {{ __('Generate') }}
+                        <x-tabler-arrow-right class="size-5" />
+                    </x-button>
+                </div>
 
                 <x-button
-                    class="absolute end-4 top-1/2 -translate-y-1/2 hover:-translate-y-1/2 hover:scale-110 max-lg:relative max-lg:right-auto max-lg:top-auto max-lg:mt-2 max-lg:w-full max-lg:translate-y-0"
-                    id="openai_generator_button"
+                    class="lqd-generator-advanced-trigger group text-3xs font-semibold text-heading-foreground"
+                    ::class="{ 'active': advancedSettingsShow }"
                     tag="button"
-                    type="submit"
+                    type="button"
+                    variant="link"
+                    @click="advancedSettingsShow = !advancedSettingsShow"
                 >
-                    {{ __('Generate') }}
-                    <x-tabler-arrow-right class="size-5" />
+                    {{ __('Advanced Settings') }}
+                    <span class="size-9 inline-flex items-center justify-center rounded-full bg-background shadow-sm">
+                        <x-tabler-plus
+                            class="size-4"
+                            ::class="{ 'hidden': advancedSettingsShow }"
+                        />
+                        <x-tabler-minus
+                            class="size-4 hidden"
+                            ::class="{ 'hidden': !advancedSettingsShow }"
+                        />
+                    </span>
                 </x-button>
-            </div>
 
-            <x-button
-                class="lqd-generator-advanced-trigger group text-3xs font-semibold text-heading-foreground"
-                ::class="{ 'active': advancedSettingsShow }"
-                tag="button"
-                type="button"
-                variant="link"
-                @click="advancedSettingsShow = !advancedSettingsShow"
-            >
-                {{ __('Advanced Settings') }}
-                <span class="size-9 inline-flex items-center justify-center rounded-full bg-background shadow-sm">
-                    <x-tabler-plus
-                        class="size-4"
-                        ::class="{ 'hidden': advancedSettingsShow }"
-                    />
-                    <x-tabler-minus
-                        class="size-4 hidden"
-                        ::class="{ 'hidden': !advancedSettingsShow }"
-                    />
-                </span>
-            </x-button>
-
-            <div
-                class="hidden w-full flex-wrap justify-between gap-3"
-                x-data
-                x-show="advancedSettingsShow"
-                :class="{ 'hidden': !advancedSettingsShow, 'flex': advancedSettingsShow }"
-            >
-                @include('panel.user.openai.components.generator_image_dalle_options')
-            </div>
-        </form>
-    </div>
+                <div
+                    class="hidden w-full flex-wrap justify-between gap-3"
+                    x-data
+                    x-show="advancedSettingsShow"
+                    :class="{ 'hidden': !advancedSettingsShow, 'flex': advancedSettingsShow }"
+                >
+                    @include('panel.user.openai.components.generator_image_dalle_options')
+                </div>
+            </form>
+        </div>
+    @endif
 
     <div
         class="lqd-image-generator-tabs-content lqd-image-generator-stablediffusion hidden"
@@ -245,7 +245,7 @@
                 document.startViewTransition(() => this.activeTool = tool);
             }
         }"
-        :class="{ 'hidden': activeGenerator !== 'stablediffusion' }"
+        :class="{ 'hidden': activeGenerator !== 'stable_diffusion' }"
     >
         <form
             class="lqd-image-generator-stablediffusion-form flex flex-col"
@@ -329,8 +329,8 @@
                 :class="{ 'hidden': activeTool !== 'text-to-image', 'flex': activeTool === 'text-to-image' }"
             >
                 <div class="lqd-image-generator-inputs-wrap relative w-full">
-                    @foreach (json_decode($openai->questions) ?? [] as $question)
-                        @if ($question->type == 'textarea')
+                    @foreach (json_decode($openai->questions, false) ?? [] as $question)
+                        @if ($question->type === 'textarea')
                             <x-forms.input
                                 class="max-md:min-h-32 h-14 resize-none overflow-hidden rounded-full bg-background px-6 py-4 text-heading-foreground shadow-sm placeholder:text-foreground/50 max-md:rounded-md"
                                 id="txt2img_description"
@@ -552,6 +552,9 @@
             </div>
         </form>
     </div>
+    @if (\App\Helpers\Classes\Helper::setFalAIKey())
+        @includeFirst(['flux-pro::flux-pro-tab-body', 'panel.user.openai.includes.flux-pro-tab-body', 'vendor.empty'])
+    @endif
 
     @include('panel.user.openai_chat.components.prompt_library_modal')
 </x-card>
@@ -661,13 +664,16 @@
                 class="image-result lqd-loading-skeleton group w-full"
                 data-id="{{ $item->id }}"
                 data-generator="{{ str()->lower($item->response) }}"
+                {{ $item->request_id ? 'data-request-id=' . $item->request_id : '' }}
             >
+
                 <figure
                     class="lqd-image-result-fig relative mb-3 aspect-square overflow-hidden rounded-lg shadow-md transition-all group-hover:-translate-y-1 group-hover:scale-105 group-hover:shadow-lg"
                     data-lqd-skeleton-el
                 >
                     <img
                         class="lqd-image-result-img aspect-square h-full w-full object-cover object-center"
+                        id="img-{{ $item->response . '-' . $item->id }}"
                         loading="lazy"
                         src="{{ ThumbImage($item->output) }}"
                     >
@@ -684,6 +690,7 @@
                             </x-button>
                             <x-button
                                 class="lqd-image-result-view gallery size-9 rounded-full bg-background text-foreground hover:bg-background hover:bg-emerald-400 hover:text-white"
+                                id="img-{{ $item->response . '-' . $item->id }}-payload"
                                 data-payload="{{ $item }}"
                                 @click.prevent="setActiveItem( JSON.parse($el.getAttribute('data-payload') || {}) ); modalShow = true"
                                 size="none"
@@ -737,7 +744,6 @@
         </div>
     @endif
 
-    {{-- Image modal --}}
     <div
         class="lqd-modal-img group/modal invisible fixed start-0 top-0 z-[999] flex h-screen w-screen flex-col items-center border p-3 opacity-0 [&.is-active]:visible [&.is-active]:opacity-100"
         id="modal_image"
@@ -763,7 +769,7 @@
 
                     <figure class="lqd-modal-fig relative aspect-square min-h-[1px] w-full rounded-lg bg-cover bg-center max-md:min-h-[350px] md:w-6/12">
                         <img
-                            class="lqd-modal-img mx-auto h-full w-auto"
+                            class="lqd-modal-img mx-auto h-full w-auto object-cover object-center"
                             :src="activeItem?.output"
                             :alt="activeItem?.input"
                         />
@@ -831,7 +837,7 @@
                                     <p class="mb-1">@lang('AI Model')</p>
                                     <p
                                         class="mb-0 opacity-60"
-                                        x-text="activeItem?.response ?? '{{ __('None') }}'"
+                                        x-text="activeItem?.response ? (activeItem?.response + (activeItem?.payload?.model ? ' | ' + activeItem.payload.model : '')) : '{{ __('None') }}'"
                                     ></p>
                                 </div>
                             </div>
@@ -893,6 +899,7 @@
                 <div class="opacity-0 transition-opacity group-hover:opacity-100">
                     <x-button
                         class="lqd-image-result-download download size-9 rounded-full bg-background text-foreground hover:bg-background hover:bg-emerald-400 hover:text-white"
+                        target="_blank"
                         size="none"
                         href="#"
                         download=true
@@ -1072,6 +1079,7 @@
             }
             reader.readAsDataURL(file);
         }
+
         document.getElementById("img2img_src").addEventListener('change', resizeImage);
         document.getElementById("upscale_src").addEventListener('change', resizeImage);
         document.getElementById("image_resolution").addEventListener('change', resizeImage);
@@ -1099,7 +1107,7 @@
                 threshold: [1]
             });
 
-            loadMoreObserver.observe(loadMoreTrigger);
+            loadMoreTrigger && loadMoreObserver.observe(loadMoreTrigger);
 
             function createSkeleton(template, limit = 5) {
                 const skeletonTemplates = [];
@@ -1168,4 +1176,5 @@
             }
         })();
     </script>
+    @includeFirst(['flux-pro::flux-pro-script', 'panel.user.openai.includes.flux-pro-script', 'vendor.empty'])
 @endpush

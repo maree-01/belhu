@@ -1,7 +1,7 @@
 @extends('panel.layout.app', ['layout_wide' => true, 'wide_layout_px' => 'px-0'])
 
 @section('content')
-    <div class="absolute left-0 right-0 top-0 flex items-center px-8 pt-8 max-lg:px-1">
+    <header class="absolute left-0 right-0 top-0 flex items-center px-8 pt-8 max-lg:px-1">
         <div class="flex-grow">
             <a
                 class="navbar-brand"
@@ -45,8 +45,9 @@
                 {{ __('Back to Home') }}
             </a>
         </div>
-    </div>
-    <div class="flex min-h-[100vh] w-full flex-wrap items-stretch max-md:pb-20 max-md:pt-32">
+    </header>
+
+    <div class="lqd-auth-content flex min-h-screen w-full flex-wrap items-stretch max-md:pb-20 max-md:pt-32">
         <div class="grow md:flex md:w-1/2 md:flex-col md:items-center md:justify-center md:py-20">
             <div class="w-full px-4 text-center text-2xs lg:w-1/2">
                 @yield('form')

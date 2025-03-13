@@ -14,11 +14,11 @@ class AwsServiceProvider extends ServiceProvider
     {
         $this->app->singleton(BedrockRuntimeService::class, function () {
             return new BedrockRuntimeService([
-                'region'  => config("filesystems.disks.s3.region"),
-                'version' => 'latest',
+                'region'      => config('filesystems.disks.s3.region'),
+                'version'     => 'latest',
                 'credentials' => [
-                    'key'    => config("filesystems.disks.s3.key"),
-                    'secret' => config("filesystems.disks.s3.secret"),
+                    'key'    => config('filesystems.disks.s3.key'),
+                    'secret' => config('filesystems.disks.s3.secret'),
                 ],
             ]);
         });

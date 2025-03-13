@@ -17,7 +17,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('ai_models', function (Blueprint $table) {
-            $table->dropColumn('is_selected', 'selected_name');
+            $table->dropColumn('is_selected');
+            $table->dropColumn('selected_title');
         });
     }
 };

@@ -3,16 +3,19 @@
 namespace App\Services\PaymentGateways;
 
 use App\Actions\CreateActivity;
+use App\Enums\Plan\FrequencyEnum;
 use App\Models\Currency;
 use App\Models\GatewayProducts;
 use App\Models\Gateways;
-use App\Models\PaymentPlans;
-// use App\Models\Subscriptions;
 use App\Models\PaymentProof;
+// use App\Models\Subscriptions;
+use App\Models\Plan;
 // use App\Models\SubscriptionItems;
 use App\Models\Setting;
 use App\Models\User;
 use App\Models\UserOrder;
+use App\Services\PaymentGateways\Contracts\CreditUpdater;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -38,6 +41,8 @@ use Laravel\Cashier\Subscription as Subscriptions;
  */
 class TransferService
 {
+    use CreditUpdater;
+
     protected static $GATEWAY_CODE = 'banktransfer';
 
     protected static $GATEWAY_NAME = 'Bank Transfer';
@@ -45,13 +50,14 @@ class TransferService
     public static function saveAllProducts()
     {
         $gateway = Gateways::where('code', self::$GATEWAY_CODE)->where('is_active', 1)->first() ?? abort(404);
+
         try {
-            $plans = PaymentPlans::where('active', 1)->get();
+            $plans = Plan::where('active', 1)->get();
             foreach ($plans as $plan) {
                 self::saveProduct($plan);
             }
-        } catch (\Exception $ex) {
-            Log::error(self::$GATEWAY_CODE.'-> saveAllProducts(): '.$ex->getMessage());
+        } catch (Exception $ex) {
+            Log::error(self::$GATEWAY_CODE . '-> saveAllProducts(): ' . $ex->getMessage());
 
             return back()->with(['message' => $ex->getMessage(), 'type' => 'error']);
         }
@@ -62,20 +68,20 @@ class TransferService
         try {
             $productData = GatewayProducts::where(['plan_id' => $plan->id, 'gateway_code' => self::$GATEWAY_CODE])->first();
             if ($productData == null) {
-                $product = new GatewayProducts();
+                $product = new GatewayProducts;
                 $product->plan_id = $plan->id;
                 $product->plan_name = $plan->name;
                 $product->gateway_code = self::$GATEWAY_CODE;
                 $product->gateway_title = self::$GATEWAY_NAME;
-                $product->product_id = 'BTP-'.strtoupper(Str::random(13));
+                $product->product_id = 'BTP-' . strtoupper(Str::random(13));
                 $product->price_id = 'Not Needed';
                 $product->save();
             } else {
                 $productData->plan_name = $plan->name;
                 $productData->save();
             }
-        } catch (\Exception $ex) {
-            Log::error(self::$GATEWAY_CODE.'-> saveProduct(): '.$ex->getMessage());
+        } catch (Exception $ex) {
+            Log::error(self::$GATEWAY_CODE . '-> saveProduct(): ' . $ex->getMessage());
 
             return back()->with(['message' => $ex->getMessage(), 'type' => 'error']);
         }
@@ -84,6 +90,7 @@ class TransferService
     public static function subscribe($plan)
     {
         $gateway = Gateways::where('code', self::$GATEWAY_CODE)->where('is_active', 1)->first() ?? abort(404);
+
         try {
             $user = auth()->user();
             $currency = Currency::where('id', $gateway->currency)->first()->code;
@@ -124,11 +131,11 @@ class TransferService
             // $subscriptionItem->stripe_price = "Not Needed";
             // $subscriptionItem->quantity = 1;
             // $subscriptionItem->save();
-            $order_id = 'TSO-'.strtoupper(Str::random(13));
+            $order_id = 'TSO-' . strtoupper(Str::random(13));
 
-            return view('panel.user.finance.subscription.'.self::$GATEWAY_CODE, compact('plan', 'newDiscountedPrice', 'taxValue', 'taxRate', 'gateway', 'order_id'));
-        } catch (\Exception $th) {
-            Log::error(self::$GATEWAY_CODE.'-> subscribe(): '.$th->getMessage());
+            return view('panel.user.finance.subscription.' . self::$GATEWAY_CODE, compact('plan', 'newDiscountedPrice', 'taxValue', 'taxRate', 'gateway', 'order_id'));
+        } catch (Exception $th) {
+            Log::error(self::$GATEWAY_CODE . '-> subscribe(): ' . $th->getMessage());
 
             return back()->with(['message' => Str::before($th->getMessage(), ':'), 'type' => 'error']);
         }
@@ -146,10 +153,11 @@ class TransferService
         $proof_image = $request->input('proof_image', null);
         $user = auth()->user();
 
-        $settings = Setting::first();
+        $settings = Setting::getCache();
         $gateway = Gateways::where('code', self::$GATEWAY_CODE)->where('is_active', 1)->first() ?? abort(404);
-        $plan = PaymentPlans::find($planID) ?? abort(404);
+        $plan = Plan::find($planID) ?? abort(404);
         $total = $plan->price;
+
         try {
             DB::beginTransaction();
             if ($couponID !== null) {
@@ -163,7 +171,7 @@ class TransferService
             }
             $total += taxToVal($plan->price, $gateway->tax);
 
-            $subscription = new Subscriptions();
+            $subscription = new Subscriptions;
             $subscription->user_id = $user->id;
             $subscription->name = $plan->id;
             $subscription->stripe_id = $orderID;
@@ -172,22 +180,27 @@ class TransferService
             $subscription->quantity = 1;
             $subscription->trial_ends_at = null;
             switch ($plan->frequency) {
-                case 'monthly':
+                case FrequencyEnum::MONTHLY->value:
                     $subscription->ends_at = \Carbon\Carbon::now()->addMonths(1);
+
                     break;
-                case 'yearly':
+                case FrequencyEnum::YEARLY->value:
                     $subscription->ends_at = \Carbon\Carbon::now()->addYears(1);
+
                     break;
-                case 'lifetime_monthly':
+                case FrequencyEnum::LIFETIME_MONTHLY->value:
                     $subscription->ends_at = \Carbon\Carbon::now()->addMonths(1); //ends each month but auto renewing without payment reqs
                     $subscription->auto_renewal = 1;
+
                     break;
-                case 'lifetime_yearly':
+                case FrequencyEnum::LIFETIME_YEARLY->value:
                     $subscription->ends_at = \Carbon\Carbon::now()->addYears(1); //ends each year but auto renewing without payment reqs
                     $subscription->auto_renewal = 1;
+
                     break;
                 default:
                     $subscription->ends_at = \Carbon\Carbon::now()->addDays(30);
+
                     break;
             }
             $subscription->tax_rate = $gateway->tax;
@@ -198,7 +211,7 @@ class TransferService
             $subscription->paid_with = self::$GATEWAY_CODE;
             $subscription->save();
 
-            $order = new UserOrder();
+            $order = new UserOrder;
             $order->order_id = $orderID;
             $order->plan_id = $plan->id;
             $order->user_id = $user->id;
@@ -211,8 +224,8 @@ class TransferService
             $order->tax_value = taxToVal($plan->price, $gateway->tax);
             $order->save();
 
-            $filename = Str::random(20).'_'.time().'.'.$request->file('proof_image')->getClientOriginalExtension();
-            $paymentProof = new PaymentProof();
+            $filename = Str::random(20) . '_' . time() . '.' . $request->file('proof_image')->getClientOriginalExtension();
+            $paymentProof = new PaymentProof;
             $paymentProof->order_id = $orderID;
             $paymentProof->user_id = $user->id;
             $paymentProof->plan_id = $planID;
@@ -221,11 +234,11 @@ class TransferService
             $paymentProof->save();
             $request->file('proof_image')->move(public_path('proofs'), $filename);
             \App\Models\Usage::getSingle()->updateSalesCount($total);
-            CreateActivity::for($user, __('initiated a subscription approval-awaiting bank transaction.'), $plan->name.' '.__('Plan'));
+            CreateActivity::for($user, __('initiated a subscription approval-awaiting bank transaction.'), $plan->name . ' ' . __('Plan'));
 
-        } catch (\Exception $th) {
+        } catch (Exception $th) {
             DB::rollBack();
-            Log::error(self::$GATEWAY_CODE.'-> subscribe(): '.$th->getMessage());
+            Log::error(self::$GATEWAY_CODE . '-> subscribe(): ' . $th->getMessage());
 
             return back()->with(['message' => Str::before($th->getMessage(), ':'), 'type' => 'error']);
         }
@@ -234,13 +247,14 @@ class TransferService
 
         return redirect()->route('dashboard.user.payment.succesful')->with([
             'message' => __('Thank you for your purchase. You will be notified once the payment transaction is accepted.'),
-            'type' => 'success',
+            'type'    => 'success',
         ]);
     }
 
     public static function prepaid($plan)
     {
         $gateway = Gateways::where('code', self::$GATEWAY_CODE)->where('is_active', 1)->first() ?? abort(404);
+
         try {
             $user = auth()->user();
             $currency = Currency::where('id', $gateway->currency)->first()->code;
@@ -260,11 +274,11 @@ class TransferService
                     $newDiscountedPrice = number_format($newDiscountedPrice, 2);
                 }
             }
-            $order_id = 'TPO-'.strtoupper(Str::random(13));
+            $order_id = 'TPO-' . strtoupper(Str::random(13));
 
-            return view('panel.user.finance.prepaid.'.self::$GATEWAY_CODE, compact('plan', 'newDiscountedPrice', 'taxValue', 'taxRate', 'gateway', 'order_id'));
-        } catch (\Exception $th) {
-            Log::error(self::$GATEWAY_CODE.'-> prepaid(): '.$th->getMessage());
+            return view('panel.user.finance.prepaid.' . self::$GATEWAY_CODE, compact('plan', 'newDiscountedPrice', 'taxValue', 'taxRate', 'gateway', 'order_id'));
+        } catch (Exception $th) {
+            Log::error(self::$GATEWAY_CODE . '-> prepaid(): ' . $th->getMessage());
 
             return back()->with(['message' => Str::before($th->getMessage(), ':'), 'type' => 'error']);
         }
@@ -277,10 +291,11 @@ class TransferService
         $couponID = $request->input('couponID', null);
 
         $user = auth()->user();
-        $settings = Setting::first();
+        $settings = Setting::getCache();
         $gateway = Gateways::where('code', self::$GATEWAY_CODE)->where('is_active', 1)->first() ?? abort(404);
-        $plan = PaymentPlans::find($planID) ?? abort(404);
+        $plan = Plan::find($planID) ?? abort(404);
         $total = $plan->price;
+
         try {
             DB::beginTransaction();
             if ($couponID !== null) {
@@ -294,7 +309,7 @@ class TransferService
             }
             $total += taxToVal($plan->price, $gateway->tax);
 
-            $order = new UserOrder();
+            $order = new UserOrder;
             $order->order_id = $orderID;
             $order->plan_id = $plan->id;
             $order->user_id = $user->id;
@@ -308,11 +323,11 @@ class TransferService
             $order->tax_value = taxToVal($plan->price, $gateway->tax);
             $order->save();
             \App\Models\Usage::getSingle()->updateSalesCount($total);
-            CreateActivity::for($user, __('initiated a prepaid pack approval-awaiting bank transaction.'), $plan->name.' '.__('Plan'));
+            CreateActivity::for($user, __('initiated a prepaid pack approval-awaiting bank transaction.'), $plan->name . ' ' . __('Plan'));
 
-        } catch (\Exception $th) {
+        } catch (Exception $th) {
             DB::rollBack();
-            Log::error(self::$GATEWAY_CODE.'-> subscribe(): '.$th->getMessage());
+            Log::error(self::$GATEWAY_CODE . '-> subscribe(): ' . $th->getMessage());
 
             return back()->with(['message' => Str::before($th->getMessage(), ':'), 'type' => 'error']);
         }
@@ -320,7 +335,7 @@ class TransferService
 
         return redirect()->route('dashboard.user.payment.succesful')->with([
             'message' => __('Thank you for your purchase. You will be notified once the payment transaction is accepted.'),
-            'type' => 'success',
+            'type'    => 'success',
         ]);
     }
 
@@ -344,7 +359,7 @@ class TransferService
     public static function getSubscriptionDaysLeft()
     {
         $user = Auth::user();
-        $settings = Setting::first();
+        $settings = Setting::getCache();
         $gateway = Gateways::where('code', self::$GATEWAY_CODE)->where('is_active', 1)->first() ?? abort(404);
         $currency = Currency::where('id', $gateway->currency)->first()->code;
         $sub = getCurrentActiveSubscription($user->id);
@@ -362,13 +377,9 @@ class TransferService
         $user = $internalUser ?? Auth::user();
         $activeSub = getCurrentActiveSubscription($user->id);
         if ($activeSub != null) {
-            $plan = PaymentPlans::where('id', $activeSub->plan_id)->first();
+            $plan = Plan::where('id', $activeSub->plan_id)->first();
 
-            $recent_words = $user->remaining_words - $plan->total_words;
-            $recent_images = $user->remaining_images - $plan->total_images;
-            $user->remaining_words = $recent_words < 0 ? 0 : $recent_words;
-            $user->remaining_images = $recent_images < 0 ? 0 : $recent_images;
-            $user->save();
+            self::creditDecreaseCancelPlan($user, $plan);
 
             $activeSub->stripe_status = 'bank_canceled';
             $activeSub->save();
@@ -402,20 +413,27 @@ class TransferService
     {
         try {
             $order = UserOrder::where('order_id', $subscription->stripe_id)->first();
-            $recent_words = $order->user->remaining_words - $order->plan->total_words;
-            $recent_images = $order->user->remaining_images - $order->plan->total_images;
-            $order->user->remaining_words = $recent_words < 0 ? 0 : $recent_words;
-            $order->user->remaining_images = $recent_images < 0 ? 0 : $recent_images;
-            $order->user->save();
+
+            /**
+             * @var Plan $plan
+             */
+            $plan = $order->plan;
+
+            /**
+             * @var User $user
+             */
+            $user = $order->user;
+
+            self::creditDecreaseCancelPlan($user, $plan);
 
             $subscription->stripe_status = 'bank_canceled';
             $subscription->save();
             // sent mail if required here later
-            CreateActivity::for($order->user, __('Subscription canceled due to plan deletion.'), $order->plan->name.' '.__('Plan'));
+            CreateActivity::for($order->user, __('Subscription canceled due to plan deletion.'), $order->plan->name . ' ' . __('Plan'));
 
             return true;
-        } catch (\Exception $th) {
-            Log::error(self::$GATEWAY_CODE.' cancelSubscribedPlan(): '.$th->getMessage()."\n------------------------\n");
+        } catch (Exception $th) {
+            Log::error(self::$GATEWAY_CODE . ' cancelSubscribedPlan(): ' . $th->getMessage() . "\n------------------------\n");
 
             return false;
         }

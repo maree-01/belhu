@@ -21,8 +21,8 @@ class DocumentsApiController extends Controller
     public function __construct()
     {
         //Settings
-        $this->settings = Setting::first();
-        $this->settings_two = SettingTwo::first();
+        $this->settings = Setting::getCache();
+        $this->settings_two = SettingTwo::getCache();
         // Fetch the Site Settings object with openai_api_secret
         if ($this->settings?->user_api_option) {
             $apiKeys = explode(',', auth()->user()?->api_keys);
@@ -230,11 +230,11 @@ class DocumentsApiController extends Controller
         ];
 
         if ($filter != 'all' && $filter != 'All') {
-            $query[] = ['openai.filters', 'LIKE', '%'.$filter.'%'];
+            $query[] = ['openai.filters', 'LIKE', '%' . $filter . '%'];
         }
 
         if ($search != '') {
-            $query[] = ['output', 'LIKE', '%'.$search.'%'];
+            $query[] = ['output', 'LIKE', '%' . $search . '%'];
         }
 
         $sortColumn = 'created_at';

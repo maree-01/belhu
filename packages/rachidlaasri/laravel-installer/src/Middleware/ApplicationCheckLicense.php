@@ -2,7 +2,6 @@
 
 namespace RachidLaasri\LaravelInstaller\Middleware;
 
-use App\Repositories\Contracts\ExtensionRepositoryInterface;
 use Closure;
 
 class ApplicationCheckLicense

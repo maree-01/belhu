@@ -9,6 +9,26 @@ if ($featured) {
 }
 
 $currencySymbol = $currency ?? currency()->symbol;
+
+if ($planType == 'prepaid' && is_null($openAiItems)) {
+    $openAIGenerators = OpenAIGenerator::query()
+        ->where('active', true)
+        ->get()
+        ->groupBy('filters')
+        ->filter(function ($item, $key) {
+            return $key;
+        });
+    foreach ($openAIGenerators as $step => $items) {
+        foreach ($items as $generator) {
+            $openAiItems[] = $generator->slug;
+        }
+    }
+}
+
+if (is_null($openAiItems)) {
+    $openAiItems = [];
+}
+
 ?>
 
 <div class="{{ $wrapper_classname }} max-xl:px-6 max-lg:px-4">

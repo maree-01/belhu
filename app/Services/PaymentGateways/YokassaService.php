@@ -3,16 +3,19 @@
 namespace App\Services\PaymentGateways;
 
 use App\Actions\CreateActivity;
+use App\Enums\Plan\FrequencyEnum;
 use App\Events\YokassaWebhookEvent;
 use App\Models\Coupon;
 use App\Models\Currency;
+use App\Models\Finance\YokassaSubscription;
 use App\Models\Gateways;
-use App\Models\PaymentPlans;
+use App\Models\Plan;
 use App\Models\Setting;
 use App\Models\User;
 use App\Models\UserOrder;
-use App\Models\YokassaSubscriptions;
+use App\Services\PaymentGateways\Contracts\CreditUpdater;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -24,10 +27,10 @@ use YooKassa\Client;
 /**
  * Base functions foreach payment gateway
  *
- * @param subscribe ($plan)                                     || Displays Payment Page of the gateway.
+ * @param subscribe ($plan)                                     || Displays Payment Page of the gateway
  * @param subscribeCheckout (Request $request, $referral= null) || -
- * @param prepaid ($plan)                                       || Displays Payment Page of Yokassa gateway for prepaid plans.
- * @param prepaidCheckout (Request $request, $referral= null)   || Handles payment action of Yokassa.
+ * @param prepaid ($plan)                                       || Displays Payment Page of Yokassa gateway for prepaid plans
+ * @param prepaidCheckout (Request $request, $referral= null)   || Handles payment action of Yokassa
  * @param handleSubscribePay ($activeSub_id)                    || handle payment with saved payment
  * @param getSubscriptionDaysLeft                               ||
  * @param subscribeCancel                                       || Cancels current subscription plan
@@ -37,6 +40,8 @@ use YooKassa\Client;
  */
 class YokassaService
 {
+    use CreditUpdater;
+
     protected static $GATEWAY_CODE = 'yokassa';
 
     protected static $GATEWAY_NAME = 'Yokassa';
@@ -65,8 +70,9 @@ class YokassaService
             $shop_id = $gateway->live_client_id;
             $key = $gateway->live_client_secret;
         }
+
         try {
-            $client = new Client();
+            $client = new Client;
             $client->setAuth($shop_id, $key);
 
             $coupon = checkCouponInRequest(); //if there a coupon in request it will return the coupin instanse
@@ -85,14 +91,14 @@ class YokassaService
             $payment = $client->createPayment(
                 [
                     'amount' => [
-                        'value' => $newDiscountedPrice,
+                        'value'    => $newDiscountedPrice,
                         'currency' => $currency,
                     ],
                     'confirmation' => [
                         'type' => 'embedded',
                     ],
-                    'capture' => true,
-                    'description' => 'Order No. 1',
+                    'capture'             => true,
+                    'description'         => 'Order No. 1',
                     'save_payment_method' => true,
                 ],
                 uniqid('', true)
@@ -100,9 +106,9 @@ class YokassaService
             $confirmation_token = $payment->confirmation->confirmation_token;
             $payment_id = $payment->id;
 
-            return view('panel.user.finance.subscription.'.self::$GATEWAY_CODE, compact('plan', 'newDiscountedPrice', 'taxValue', 'taxRate', 'gateway', 'payment_id', 'confirmation_token'));
-        } catch (\Exception $ex) {
-            Log::error(self::$GATEWAY_CODE.'-> subscribe(): '.$ex->getMessage());
+            return view('panel.user.finance.subscription.' . self::$GATEWAY_CODE, compact('plan', 'newDiscountedPrice', 'taxValue', 'taxRate', 'gateway', 'payment_id', 'confirmation_token'));
+        } catch (Exception $ex) {
+            Log::error(self::$GATEWAY_CODE . '-> subscribe(): ' . $ex->getMessage());
 
             return back()->with(['message' => $ex->getMessage(), 'type' => 'error']);
         }
@@ -124,11 +130,12 @@ class YokassaService
             $key = $gateway->live_client_secret;
         }
         $user = Auth::user();
-        $settings = Setting::first();
+        $settings = Setting::getCache();
+
         try {
             DB::beginTransaction();
-            $plan = PaymentPlans::where('id', $planID)->first();
-            $client = new Client();
+            $plan = Plan::where('id', $planID)->first();
+            $client = new Client;
             $client->setAuth($shop_id, $key);
             $payment = $client->getPaymentInfo($paymentId);
             $total = $plan->price;
@@ -149,14 +156,14 @@ class YokassaService
                 $paymentMethod = $payment->payment_method->type;
                 $payment_method_id = $payment->payment_method->id;
                 // new subscription
-                $subscription = new YokassaSubscriptions();
+                $subscription = new YokassaSubscription;
                 $subscription->plan_id = $plan->id;
                 $subscription->user_id = $user->id;
                 $subscription->name = $plan->id;
                 $subscription->payment_method_id = $payment_method_id;
 
-                if ($plan->frequency == 'lifetime_monthly' || $plan->frequency == 'lifetime_yearly') {
-                    $subscription->next_pay_at = $plan->frequency == 'lifetime_monthly' ? \Carbon\Carbon::now()->addMonths(1) : \Carbon\Carbon::now()->addYears(1);
+                if ($plan->frequency == FrequencyEnum::LIFETIME_MONTHLY->value || $plan->frequency == FrequencyEnum::LIFETIME_YEARLY->value) {
+                    $subscription->next_pay_at = $plan->frequency == FrequencyEnum::LIFETIME_MONTHLY->value ? \Carbon\Carbon::now()->addMonths(1) : \Carbon\Carbon::now()->addYears(1);
                     $subscription->auto_renewal = 1;
                     $subscription->subscription_status = 'yokassa_approved';
                 } else {
@@ -170,7 +177,7 @@ class YokassaService
                 $subscription->save();
 
                 // new order
-                $payment = new UserOrder();
+                $payment = new UserOrder;
                 $payment->order_id = $subscription->payment_method_id;
                 $payment->plan_id = $plan->id;
                 $payment->user_id = $user->id;
@@ -183,34 +190,32 @@ class YokassaService
                 $payment->tax_value = $taxValue;
                 $payment->save();
 
-                $plan->total_words == -1 ? ($user->remaining_words = -1) : ($user->remaining_words += $plan->total_words);
-                $plan->total_images == -1 ? ($user->remaining_images = -1) : ($user->remaining_images += $plan->total_images);
-                $user->save();
+                self::creditIncreaseSubscribePlan($user, $plan);
 
-                CreateActivity::for($user, __('Subscribed'), $plan->name.' '.__('Plan'));
+                CreateActivity::for($user, __('Subscribed'), $plan->name . ' ' . __('Plan'));
                 DB::commit();
             } else {
                 DB::rollBack();
 
-                return redirect()->route('dashboard.'.auth()->user()->type.'.index')->with(['message' => __('You are failed your purchase. If you paid for this, please cantact us'), 'type' => 'failed']);
+                return redirect()->route('dashboard.' . auth()->user()->type . '.index')->with(['message' => __('You are failed your purchase. If you paid for this, please cantact us'), 'type' => 'failed']);
             }
 
             return redirect()->route('dashboard.user.payment.succesful')->with(['message' => __('Thank you for your purchase. Enjoy your remaining words and images.'), 'type' => 'success']);
-        } catch (\Exception $ex) {
+        } catch (Exception $ex) {
             DB::rollBack();
-            Log::error(self::$GATEWAY_CODE.'-> subscribe(): '.$ex->getMessage());
+            Log::error(self::$GATEWAY_CODE . '-> subscribe(): ' . $ex->getMessage());
 
-            return redirect()->route('dashboard.'.auth()->user()->type.'.index')->with(['message' => __('You are failed your purchase. If you paid for this, please cantact us'), 'type' => 'failed']);
+            return redirect()->route('dashboard.' . auth()->user()->type . '.index')->with(['message' => __('You are failed your purchase. If you paid for this, please cantact us'), 'type' => 'failed']);
         }
     }
 
     public static function handleSubscribePay($activeSub_id)
     {
         $user = Auth::user();
-        $settings = Setting::first();
-        $activeSub = YokassaSubscriptions::where('id', '=', $activeSub_id)->first();
+        $settings = Setting::getCache();
+        $activeSub = YokassaSubscription::where('id', '=', $activeSub_id)->first();
         $plan_id = $activeSub->plan_id;
-        $plan = PaymentPlans::where('id', $plan_id)->first();
+        $plan = Plan::where('id', $plan_id)->first();
         $payment_method_id = $activeSub->payment_method_id;
         $gateway = Gateways::where('code', self::$GATEWAY_CODE)->where('is_active', 1)->first() ?? abort(404);
         if ($gateway->mode == 'sandbox') {
@@ -225,30 +230,29 @@ class YokassaService
         $total = $plan->price + $taxValue;
         if ($activeSub->subscription_status == 'yokassa_approved') {
             $user = User::where('id', '=', $activeSub->user_id)->first();
-            $plan->total_words == -1 ? ($user->remaining_words = -1) : ($user->remaining_words += $plan->total_words);
-            $plan->total_images == -1 ? ($user->remaining_images = -1) : ($user->remaining_images += $plan->total_images);
-            $user->save();
+
+            self::creditIncreaseSubscribePlan($user, $plan);
             $activeSub->next_pay_at = Carbon::now()->addMonth();
             $activeSub->save();
 
             return 'success';
         } else {
-            $client = new Client();
+            $client = new Client;
             $client->setAuth($shop_id, $key);
             $payment = $client->createPayment(
                 [
                     'amount' => [
-                        'value' => $total,
+                        'value'    => $total,
                         'currency' => $currency,
                     ],
-                    'capture' => true,
+                    'capture'           => true,
                     'payment_method_id' => $payment_method_id,
-                    'description' => 'Auto payment',
+                    'description'       => 'Auto payment',
                 ],
                 uniqid('', true)
             );
             if ($payment->paid == true) {
-                $payment = new UserOrder();
+                $payment = new UserOrder;
                 $payment->order_id = Str::random(12);
                 $payment->plan_id = $plan->id;
                 $payment->user_id = $user->id;
@@ -262,11 +266,10 @@ class YokassaService
                 $payment->save();
 
                 $user = User::where('id', '=', $activeSub->user_id)->first();
-                $plan->total_words == -1 ? ($user->remaining_words = -1) : ($user->remaining_words += $plan->total_words);
-                $plan->total_images == -1 ? ($user->remaining_images = -1) : ($user->remaining_images += $plan->total_images);
 
-                $user->save();
-				\App\Models\Usage::getSingle()->updateSalesCount($total);
+                self::creditIncreaseSubscribePlan($user, $plan);
+
+                \App\Models\Usage::getSingle()->updateSalesCount($total);
 
                 $activeSub->next_pay_at = Carbon::now()->addMonth();
                 $activeSub->save();
@@ -285,6 +288,7 @@ class YokassaService
     public static function prepaid($plan)
     {
         $gateway = Gateways::where('code', self::$GATEWAY_CODE)->where('is_active', 1)->first() ?? abort(404);
+
         try {
             $newDiscountedPrice = $plan->price;
             $currency = Currency::where('id', $gateway->currency)->first()->code;
@@ -308,18 +312,18 @@ class YokassaService
                 $newDiscountedPrice += $taxValue;
             }
 
-            $client = new Client();
+            $client = new Client;
             $client->setAuth($shop_id, $key);
             $payment = $client->createPayment(
                 [
                     'amount' => [
-                        'value' => $newDiscountedPrice,
+                        'value'    => $newDiscountedPrice,
                         'currency' => $currency,
                     ],
                     'confirmation' => [
                         'type' => 'embedded',
                     ],
-                    'capture' => true,
+                    'capture'     => true,
                     'description' => 'Order No. 1',
                 ],
                 uniqid('', true)
@@ -327,9 +331,9 @@ class YokassaService
             $confirmation_token = $payment->confirmation->confirmation_token;
             $payment_id = $payment->id;
 
-            return view('panel.user.finance.prepaid.'.self::$GATEWAY_CODE, compact('plan', 'newDiscountedPrice', 'payment_id', 'confirmation_token', 'taxValue', 'taxRate', 'gateway', 'currency'));
-        } catch (\Exception $ex) {
-            Log::error(self::$GATEWAY_CODE.'-> prepaid(): '.$ex->getMessage());
+            return view('panel.user.finance.prepaid.' . self::$GATEWAY_CODE, compact('plan', 'newDiscountedPrice', 'payment_id', 'confirmation_token', 'taxValue', 'taxRate', 'gateway', 'currency'));
+        } catch (Exception $ex) {
+            Log::error(self::$GATEWAY_CODE . '-> prepaid(): ' . $ex->getMessage());
 
             return back()->with(['message' => $ex->getMessage(), 'type' => 'error']);
         }
@@ -340,7 +344,7 @@ class YokassaService
         $planID = $request->input('planID', null);
         $couponID = $request->input('couponID', null);
         $paymentId = $request->input('paymentID', null);
-        $settings = Setting::first();
+        $settings = Setting::getCache();
         $gateway = Gateways::where('code', self::$GATEWAY_CODE)->where('is_active', 1)->first() ?? abort(404);
         if ($gateway->mode == 'sandbox') {
             $shop_id = $gateway->sandbox_client_id;
@@ -350,13 +354,14 @@ class YokassaService
             $key = $gateway->live_client_secret;
         }
         $user = Auth::user();
+
         try {
             DB::beginTransaction();
-            $client = new Client();
+            $client = new Client;
             $client->setAuth($shop_id, $key);
             $payment = $client->getPaymentInfo($paymentId);
             if ($payment->paid == true) {
-                $plan = PaymentPlans::where('id', $planID)->first();
+                $plan = Plan::where('id', $planID)->first();
                 $total = $plan->price;
                 $taxValue = taxToVal($plan->price, $gateway->tax);
                 if ($couponID) {
@@ -373,8 +378,8 @@ class YokassaService
                 $total += $taxValue;
 
                 // new order
-                $payment = new UserOrder();
-                $payment->order_id = 'YPO-'.strtoupper(Str::random(13));
+                $payment = new UserOrder;
+                $payment->order_id = 'YPO-' . strtoupper(Str::random(13));
                 $payment->plan_id = $plan->id;
                 $payment->type = 'prepaid';
                 $payment->user_id = $user->id;
@@ -387,22 +392,21 @@ class YokassaService
                 $payment->tax_value = $taxValue;
                 $payment->save();
 
-                $plan->total_words == -1 ? ($user->remaining_words = -1) : ($user->remaining_words += $plan->total_words);
-                $plan->total_images == -1 ? ($user->remaining_images = -1) : ($user->remaining_images += $plan->total_images);
-                $user->save();
+                self::creditIncreaseSubscribePlan($user, $plan);
 
-                CreateActivity::for($user, __('Purchased'), $plan->name.' '.__('Token Pack'));
+                CreateActivity::for($user, __('Purchased'), $plan->name . ' ' . __('Token Pack'));
                 DB::commit();
-				\App\Models\Usage::getSingle()->updateSalesCount($total);
+                \App\Models\Usage::getSingle()->updateSalesCount($total);
+
                 return redirect()->route('dashboard.user.payment.succesful')->with(['message' => __('Thank you for your purchase. Enjoy your remaining words and images.'), 'type' => 'success']);
             }
 
-            return redirect()->route('dashboard.'.auth()->user()->type.'.index')->with(['message' => __('You are failed your purchase. If you paid for this, please cantact us'), 'type' => 'failed']);
-        } catch (\Exception $ex) {
+            return redirect()->route('dashboard.' . auth()->user()->type . '.index')->with(['message' => __('You are failed your purchase. If you paid for this, please cantact us'), 'type' => 'failed']);
+        } catch (Exception $ex) {
             DB::rollBack();
-            Log::error(self::$GATEWAY_CODE.'-> prepaidCheckout(): '.$ex->getMessage());
+            Log::error(self::$GATEWAY_CODE . '-> prepaidCheckout(): ' . $ex->getMessage());
 
-            return redirect()->route('dashboard.'.auth()->user()->type.'.index')->with(['message' => __('You are failed your purchase. If you paid for this, please cantact us'), 'type' => 'failed']);
+            return redirect()->route('dashboard.' . auth()->user()->type . '.index')->with(['message' => __('You are failed your purchase. If you paid for this, please cantact us'), 'type' => 'failed']);
         }
 
     }
@@ -410,7 +414,7 @@ class YokassaService
     public static function getSubscriptionDaysLeft()
     {
         $userId = Auth::user()->id;
-        $activeSub = YokassaSubscriptions::where([['subscription_status', '=', 'active'], ['user_id', '=', $userId]])->orWhere([['subscription_status', '=', 'yokassa_approved'], ['user_id', '=', $userId]])->first();
+        $activeSub = YokassaSubscription::where([['subscription_status', '=', 'active'], ['user_id', '=', $userId]])->orWhere([['subscription_status', '=', 'yokassa_approved'], ['user_id', '=', $userId]])->first();
         if ($activeSub != null) {
             return \Carbon\Carbon::now()->diffInDays($activeSub->next_pay_at);
         }
@@ -422,19 +426,16 @@ class YokassaService
     {
         $user = $internalUser ?? Auth::user();
 
-        $activeSub = YokassaSubscriptions::where([['subscription_status', '=', 'active'], ['user_id', '=', $user->id]])->orWhere([['subscription_status', '=', 'yokassa_approved'], ['user_id', '=', $user->id]])->first();
+        $activeSub = YokassaSubscription::where([['subscription_status', '=', 'active'], ['user_id', '=', $user->id]])->orWhere([['subscription_status', '=', 'yokassa_approved'], ['user_id', '=', $user->id]])->first();
 
         if ($activeSub !== null) {
-            $plan = PaymentPlans::findOrFail($activeSub->plan_id);
+            $plan = Plan::findOrFail($activeSub->plan_id);
             $activeSub->update([
                 'subscription_status' => 'cancelled',
-                'next_pay_at' => Carbon::now(),
+                'next_pay_at'         => Carbon::now(),
             ]);
-            $recent_words = $user->remaining_words - $plan->total_words;
-            $recent_images = $user->remaining_images - $plan->total_images;
-            $user->remaining_words = $recent_words < 0 ? 0 : $recent_words;
-            $user->remaining_images = $recent_images < 0 ? 0 : $recent_images;
-            $user->save();
+
+            self::creditDecreaseCancelPlan($user, $plan);
 
             CreateActivity::for($user, 'Cancelled', 'Subscription plan');
 
@@ -451,7 +452,7 @@ class YokassaService
     public static function getSubscriptionRenewDate()
     {
         $userId = Auth::user()->id;
-        $activeSub = YokassaSubscriptions::where([['subscription_status', '=', 'active'], ['user_id', '=', $userId]])->orWhere([['subscription_status', '=', 'yokassa_approved'], ['user_id', '=', $userId]])->first();
+        $activeSub = YokassaSubscription::where([['subscription_status', '=', 'active'], ['user_id', '=', $userId]])->orWhere([['subscription_status', '=', 'yokassa_approved'], ['user_id', '=', $userId]])->first();
         if ($activeSub != null) {
             return \Carbon\Carbon::createFromTimeStamp($activeSub->next_pay_at)->format('F jS, Y');
         }
@@ -459,26 +460,26 @@ class YokassaService
         return null;
     }
 
-    public static function getSubscriptionStatus()
+    public static function getSubscriptionStatus($user_id = null): ?bool
     {
-        $userId = Auth::user()->id;
-        $activeSub = YokassaSubscriptions::where([['subscription_status', '=', 'active'], ['user_id', '=', $userId]])->orWhere([['subscription_status', '=', 'yokassa_approved'], ['user_id', '=', $userId]])->first();
-        if ($activeSub != null) {
+        $userId = $user_id ?? Auth::user()->id;
+        $activeSub = YokassaSubscription::where([['subscription_status', '=', 'active'], ['user_id', '=', $userId]])->orWhere([['subscription_status', '=', 'yokassa_approved'], ['user_id', '=', $userId]])->first();
+        if ($activeSub) {
             // when lifetime
-            if ($activeSub->subscription_status == 'yokassa_approved') {
+            if ($activeSub->subscription_status === 'yokassa_approved') {
                 // TODO: we can renew from here or from command
                 return true;
-            } else {
-                if ($activeSub['subscription_status'] == 'active') {
-                    return true;
-                } else {
-                    $activeSub->subscription_status = 'cancelled';
-                    $activeSub->next_pay_at = \Carbon\Carbon::now();
-                    $activeSub->save();
-
-                    return false;
-                }
             }
+
+            if ($activeSub['subscription_status'] === 'active') {
+                return true;
+            }
+
+            $activeSub->subscription_status = 'cancelled';
+            $activeSub->next_pay_at = \Carbon\Carbon::now();
+            $activeSub->save();
+
+            return false;
         }
 
         return null;
@@ -487,7 +488,7 @@ class YokassaService
     public static function checkIfTrial()
     {
         $userId = Auth::user()->id;
-        $activeSub = YokassaSubscriptions::where([['subscription_status', '=', 'active'], ['user_id', '=', $userId]])->orWhere([['subscription_status', '=', 'yokassa_approved'], ['user_id', '=', $userId]])->first();
+        $activeSub = YokassaSubscription::where([['subscription_status', '=', 'active'], ['user_id', '=', $userId]])->orWhere([['subscription_status', '=', 'yokassa_approved'], ['user_id', '=', $userId]])->first();
         if ($activeSub != null) {
             return false;
         }
@@ -499,15 +500,13 @@ class YokassaService
     {
         $user = Auth::user();
         if ($subscription != null) {
-            $plan = PaymentPlans::where('id', $planId)->first();
-            $recent_words = $user->remaining_words - $plan->total_words;
-            $recent_images = $user->remaining_images - $plan->total_images;
+            $plan = Plan::where('id', $planId)->first();
+
             $subscription->subscription_status = 'cancelled';
             $subscription->next_pay_at = Carbon::now();
             $subscription->save();
-            $user->remaining_words = $recent_words < 0 ? 0 : $recent_words;
-            $user->remaining_images = $recent_images < 0 ? 0 : $recent_images;
-            $user->save();
+
+            self::creditDecreaseCancelPlan($user, $plan);
 
             return true;
         }
@@ -545,8 +544,8 @@ class YokassaService
             } else {
                 return false;
             }
-        } catch (\Exception $th) {
-            Log::error('(Webhooks) Yokassa::verifyIncomingJson(): '.$th->getMessage());
+        } catch (Exception $th) {
+            Log::error('(Webhooks) Yokassa::verifyIncomingJson(): ' . $th->getMessage());
         }
 
         return false;
@@ -579,32 +578,32 @@ class YokassaService
     public static function gatewayDefinitionArray(): array
     {
         return [
-            'code' => 'yokassa',
-            'title' => 'Yokassa',
-            'link' => 'https://yokassa.ru/',
-            'active' => 0,
-            'available' => 1,
-            'img' => '/assets/img/payments/yokassa.svg',
-            'whiteLogo' => 0,
-            'mode' => 1,
-            'sandbox_client_id' => 1,
+            'code'                  => 'yokassa',
+            'title'                 => 'Yokassa',
+            'link'                  => 'https://yokassa.ru/',
+            'active'                => 0,
+            'available'             => 1,
+            'img'                   => '/assets/img/payments/yokassa.svg',
+            'whiteLogo'             => 0,
+            'mode'                  => 1,
+            'sandbox_client_id'     => 1,
             'sandbox_client_secret' => 1,
-            'sandbox_app_id' => 0,
-            'live_client_id' => 1,
-            'live_client_secret' => 1,
-            'live_app_id' => 0,
-            'currency' => 1,
-            'currency_locale' => 0,
-            'notify_url' => 0,
-            'base_url' => 0,
-            'sandbox_url' => 0,
-            'locale' => 0,
-            'validate_ssl' => 0,
-            'webhook_secret' => 0,
-            'logger' => 0,
-            'tax' => 1,              // Option in settings
-            'bank_account_details' => 0,
-            'bank_account_other' => 0,
+            'sandbox_app_id'        => 0,
+            'live_client_id'        => 1,
+            'live_client_secret'    => 1,
+            'live_app_id'           => 0,
+            'currency'              => 1,
+            'currency_locale'       => 0,
+            'notify_url'            => 0,
+            'base_url'              => 0,
+            'sandbox_url'           => 0,
+            'locale'                => 0,
+            'validate_ssl'          => 0,
+            'webhook_secret'        => 0,
+            'logger'                => 0,
+            'tax'                   => 1,              // Option in settings
+            'bank_account_details'  => 0,
+            'bank_account_other'    => 0,
         ];
     }
 }

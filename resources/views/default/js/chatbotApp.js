@@ -1,5 +1,5 @@
 // import './bootstrap';
-import {Livewire, Alpine} from '~vendor/livewire/livewire/dist/livewire.esm';
+import {Alpine, Livewire} from '~vendor/livewire/livewire/dist/livewire.esm';
 import ajax from '~nodeModules/@imacrayon/alpine-ajax';
 import {fetchEventSource} from '@microsoft/fetch-event-source';
 // import modal from "./components/modal";

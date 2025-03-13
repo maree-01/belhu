@@ -55,24 +55,6 @@
             </div>
         @endif
 
-        <div class="w-full space-y-2">
-            <x-forms.input
-                class:container="w-full"
-                id="title"
-                type="text"
-                name="title"
-                value="{{ old('title', $template != null ? $template->title : null) }}"
-                size="lg"
-                label="{{ __('Title') }}"
-                tooltip="{{ __('Email Title') }}"
-            />
-            @error('title')
-                <p class="text-red-500">
-                    {{ $message }}
-                </p>
-            @enderror
-        </div>
-
 		<div class="w-full space-y-2">
             <x-forms.input
                 class:container="w-full"

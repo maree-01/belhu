@@ -2,18 +2,85 @@
 
 namespace App\Helpers\Classes;
 
+use App\Domains\Marketplace\Repositories\Contracts\ExtensionRepositoryInterface;
+use App\Models\Currency;
+use App\Models\Finance\Subscription;
 use App\Models\RateLimit;
 use App\Models\Setting;
 use App\Models\SettingTwo;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 
 class Helper
 {
+    public static function getCurrentActiveSubscription($userId = null)
+    {
+        $userId = $userId ?? Auth::id();
+
+        return once(static function () use ($userId) {
+            return Subscription::query()
+                ->with('plan')
+                ->where('user_id', $userId)
+                ->whereIn('stripe_status', [
+                    'active',
+                    'trialing',
+                    'bank_approved',
+                    'banktransfer_approved',
+                    'bank_renewed',
+                    'free_approved',
+                    'stripe_approved',
+                    'paypal_approved',
+                    'iyzico_approved',
+                    'paystack_approved',
+                ])
+                ->first();
+        });
+    }
+
+    public static function showIntercomForBuyer(array $extensions = []): bool
+    {
+        if (self::showIntercomForVipMembership()) {
+            return false;
+        }
+
+        $extensionsCollection = collect(
+            $extensions ?: app(ExtensionRepositoryInterface::class)->extensions()
+        )
+            ->where('is_theme', request()->routeIs('dashboard.admin.themes.*'))
+            ->where('licensed', true)
+            ->where('price', '>', 0);
+
+        return $extensionsCollection->isNotEmpty();
+    }
+
+    public static function showIntercomForVipMembership(): bool
+    {
+        if (! Auth::user()?->isAdmin()) {
+            return false;
+        }
+
+        $marketSubscription = app(ExtensionRepositoryInterface::class)->subscription()->json();
+
+        return data_get($marketSubscription, 'data.stripe_status') === 'active';
+    }
+
+    public static function marketplacePaymentMessage(string $status): string
+    {
+        return match ($status) {
+            'paid'    => __('Your payment has been received successfully.'),
+            'pending' => __('Your payment is pending. Please check back later for confirmation. Once processed, you\'ll be able to download the extension.'),
+            default   => __('Your payment was unsuccessful. Please try again'),
+        };
+    }
+
     public static function hasRoute($route = null): bool
     {
-        if ($route && \Route::has($route)) {
+        if ($route && Route::has($route)) {
             return true;
         }
 
@@ -27,33 +94,6 @@ class Helper
         }
 
         return $array;
-    }
-
-
-    public static function routeWithoutTranslate($route = null)
-    {
-        if (is_null($route)) {
-            return '/';
-        }
-
-        // URL'yi ayrıştır ve path bölümünü al
-        $parsedUrl = parse_url($route);
-        $path = isset($parsedUrl['path']) ? $parsedUrl['path'] : '';
-
-        // Path'i "/" ile böl
-        $pathParts = explode('/', $path);
-
-        // Belirli bir alt dizinden sonra gelen kısmı bul
-        $start = array_search('dashboard', $pathParts);
-
-        if ($start !== false) {
-            // İstenen kısmı dizi olarak al
-            $specificPathParts = array_slice($pathParts, $start);
-            // Dizi elemanlarını birleştirerek string haline getir
-            return '/' . implode('/', $specificPathParts);
-        }
-
-        return '/'; // Aranan kısım bulunamazsa boş döndür
     }
 
     public static function decodePaymentToken(string $token): array
@@ -90,8 +130,9 @@ class Helper
     {
         try {
             DB::connection()->getPdo();
+
             return true;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return false;
         }
     }
@@ -100,10 +141,8 @@ class Helper
     {
         $data = $data->map(function ($item) use ($selected) {
             $item->selected = 0;
-            if ($selected) {
-                if (in_array($item->slug, $selected)) {
-                    $item->selected = 1;
-                }
+            if ($selected && in_array($item->slug, $selected, true)) {
+                $item->selected = 1;
             }
 
             return $item;
@@ -112,10 +151,16 @@ class Helper
         return $data->sortByDesc('selected');
     }
 
-
-    public static function setAnthropicKey(): string
+    public static function setFalAIKey(): string
     {
-        $settings = Setting::query()->first();
+        $apiKeys = explode(',', setting('fal_ai_api_secret'));
+
+        return Arr::random($apiKeys);
+    }
+
+    public static function setAnthropicKey($setting = null): string
+    {
+        $settings = $setting ?? Setting::query()->first();
 
         $apiKeys = [];
 
@@ -128,9 +173,9 @@ class Helper
         return Arr::random($apiKeys);
     }
 
-    public static function setOpenAiKey(): string
+    public static function setOpenAiKey($setting = null): string
     {
-        $settings = Setting::query()->first();
+        $settings = $setting ?? Setting::getCache();
 
         if ($settings?->getAttribute('user_api_option')) {
             $apiKeys = explode(',', auth()->user()?->getAttribute('api_keys'));
@@ -143,9 +188,9 @@ class Helper
         return config('openai.api_key');
     }
 
-    public static function setGeminiKey(): string
+    public static function setGeminiKey($setting = null): string
     {
-        $settings = Setting::query()->first();
+        $settings = $setting ?? Setting::query()->first();
         if ($settings?->getAttribute('user_api_option')) {
             $apiKeys = explode(',', auth()->user()?->getAttribute('gemini_api_keys'));
         } else {
@@ -153,6 +198,7 @@ class Helper
         }
         config(['gemini.api_key' => $apiKeys[array_rand($apiKeys)]]);
         config(['gemini.request_timeout' => 120]);
+
         return config('gemini.api_key');
     }
 
@@ -162,7 +208,7 @@ class Helper
             return '';
         }
 
-        if (!is_scalar($text)) {
+        if (! is_scalar($text)) {
             /*
              * To maintain consistency with pre-PHP 8 error levels,
              * trigger_error() is used to trigger an E_USER_WARNING,
@@ -170,7 +216,7 @@ class Helper
              */
             trigger_error(
                 sprintf(
-                /* translators: 1: The function name, 2: The argument number, 3: The argument name, 4: The expected type, 5: The provided type. */
+                    /* translators: 1: The function name, 2: The argument number, 3: The argument name, 4: The expected type, 5: The provided type. */
                     __('Warning: %1$s expects parameter %2$s (%3$s) to be a %4$s, %5$s given.'),
                     __FUNCTION__,
                     '#1',
@@ -208,31 +254,36 @@ class Helper
 
     public static function settingTwo(string $key, $default = null)
     {
-        $setting = SettingTwo::query()->first();
+        $setting = SettingTwo::getCache();
 
         return $setting?->getAttribute($key) ?? $default;
     }
 
     public static function setting(string $key, $default = null, $setting = null)
     {
-        $setting = $setting ?: Setting::query()->first();
+        $setting = $setting ?: Setting::getCache();
 
         return $setting?->getAttribute($key) ?? $default;
     }
 
+    public static function appIsDemoForChatbot(): bool
+    {
+        return self::appIsDemo() && in_array(request()->getHost(), ['magicai.test', 'magicai.liquid-themes.com']);
+    }
+
     public static function appIsDemo(): bool
     {
-        return config('app.status') == 'Demo';
+        return config('app.status') === 'Demo';
     }
 
     public static function appIsNotDemo(): bool
     {
-        return config('app.status') != 'Demo';
+        return config('app.status') !== 'Demo';
     }
 
     public static function checkImageDailyLimit()
     {
-        $settings_two = SettingTwo::first();
+        $settings_two = SettingTwo::getCache();
         if ($settings_two->daily_limit_enabled) {
             if (Helper::appIsDemo()) {
                 $msg = __('You have reached the maximum number of image generation allowed on the demo.');
@@ -281,7 +332,7 @@ class Helper
             }
             $member = $user->teamMember;
             if ($member) {
-                if (!$member->allow_unlimited_credits) {
+                if (! $member->allow_unlimited_credits) {
                     if ($member->remaining_images <= 0 and $member->remaining_images != -1) {
                         $data = [
                             'errors' => ['You have no credits left. Please consider upgrading your plan.'],
@@ -304,12 +355,33 @@ class Helper
         return response()->json([], 200);
     }
 
-    public static function sorting(array $data, $column, $direction)
+    public static function sorting(array $data, $column, $direction): array|Collection
     {
         if ($column) {
             $data = collect($data)->sortBy($column, SORT_REGULAR, $direction == 'asc');
         }
 
         return $data;
+    }
+
+    public static function parseUrl(string ...$urls): string
+    {
+        return collect($urls)->map(fn ($url) => trim($url, '/'))->implode('/');
+    }
+
+    public static function findCurrencyFromId(?int $id)
+    {
+        return Currency::cacheFromSetting($id);
+    }
+
+    public static function defaultCurrency($column = 'code')
+    {
+        $currency = Currency::query()->where('id', Helper::setting('default_currency'))->first();
+
+        if (is_null($column)) {
+            return $currency;
+        }
+
+        return $currency->$column;
     }
 }

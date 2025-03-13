@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Company extends Model
 {
@@ -12,12 +14,12 @@ class Company extends Model
         'name', 'industry', 'description', 'website', 'tagline', 'logo', 'brand_color', 'user_id',
     ];
 
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function products()
+    public function products(): HasMany
     {
         return $this->hasMany(Product::class, 'company_id');
     }

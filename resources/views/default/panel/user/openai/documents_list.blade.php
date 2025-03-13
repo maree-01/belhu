@@ -7,7 +7,7 @@
 			@if (
 				($entry->generator != null) &&
 				(
-					($filter === 'all' || ($filter === 'favorites' && isFavoritedDoc($entry->id))) ||
+					($filter === 'all' || ($filter === 'favorites' && $entry->isFavoriteDoc())) ||
 					(isset($filter) && !empty($filter) && $entry->generator->type === $filter)
 				)
 			)

@@ -24,7 +24,7 @@
                     <span class="chat-item-title text-xs font-medium group-[&.edit-mode]:pointer-events-auto">
                         {{ __($entry->title) }}
                     </span>
-                    <span class="text-3xs opacity-40">{{ $entry->updated_at->diffForHumans() }}</span>
+                    <span class="chat-item-date text-3xs opacity-40">{{ $entry->updated_at->diffForHumans() }}</span>
                     @if ($entry->reference_url != '')
                         <a
                             class="flex underline opacity-90"

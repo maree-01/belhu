@@ -13,7 +13,7 @@
                         $upgrade = true;
                     }
                 } else {
-                    if ($auth->type != 'admin' && $item->premium == 1 && $plan_type === 'regular') {
+                    if (!$auth->isAdmin() && $item->premium == 1 && $plan_type === 'regular') {
                         $upgrade = true;
                     }
                 }

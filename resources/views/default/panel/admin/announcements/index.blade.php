@@ -208,11 +208,11 @@
             <div class="flex flex-col gap-6">
                 <ul class="flex w-full justify-between gap-3 rounded-full bg-foreground/10 p-1 text-xs font-medium">
                     @foreach ($filters as $filter)
-                        <li>
+                        <li class="grow">
                             <button
                                 type="button"
                                 @class([
-                                    'px-6 py-3 leading-tight rounded-full transition-all hover:bg-background/80 [&.lqd-is-active]:bg-background [&.lqd-is-active]:shadow-[0_2px_12px_hsl(0_0%_0%/10%)]',
+                                    'w-full rounded-full px-6 py-3 leading-tight transition-all hover:bg-background/80 [&.lqd-is-active]:bg-background [&.lqd-is-active]:shadow-[0_2px_12px_hsl(0_0%_0%/10%)]',
                                     'lqd-is-active' => $loop->first,
                                 ])
                                 @click="activeFilter = '{{ $filter }}'"
@@ -235,7 +235,7 @@
                             type="button"
                         >
                             <span
-                                class="size-12 inline-grid place-items-center rounded-full bg-foreground/[7%] text-heading-foreground transition-colors group-hover/filepicker:bg-heading-foreground group-hover/filepicker:text-heading-background"
+                                class="inline-grid size-12 place-items-center rounded-full bg-foreground/[7%] text-heading-foreground transition-colors group-hover/filepicker:bg-heading-foreground group-hover/filepicker:text-heading-background"
                             >
                                 <x-tabler-plus />
                             </span>
@@ -264,7 +264,7 @@
                             type="button"
                         >
                             <span
-                                class="size-12 inline-grid place-items-center rounded-full bg-foreground/[7%] text-heading-foreground transition-colors group-hover/filepicker:bg-heading-foreground group-hover/filepicker:text-heading-background"
+                                class="inline-grid size-12 place-items-center rounded-full bg-foreground/[7%] text-heading-foreground transition-colors group-hover/filepicker:bg-heading-foreground group-hover/filepicker:text-heading-background"
                             >
                                 <x-tabler-plus />
                             </span>
@@ -310,7 +310,7 @@
                             type="button"
                         >
                             <span
-                                class="size-12 inline-grid place-items-center rounded-full bg-foreground/[7%] text-heading-foreground transition-colors group-hover/filepicker:bg-heading-foreground group-hover/filepicker:text-heading-background"
+                                class="inline-grid size-12 place-items-center rounded-full bg-foreground/[7%] text-heading-foreground transition-colors group-hover/filepicker:bg-heading-foreground group-hover/filepicker:text-heading-background"
                             >
                                 <x-tabler-plus />
                             </span>
@@ -339,7 +339,7 @@
                             type="button"
                         >
                             <span
-                                class="size-12 inline-grid place-items-center rounded-full bg-foreground/[7%] text-heading-foreground transition-colors group-hover/filepicker:bg-heading-foreground group-hover/filepicker:text-heading-background"
+                                class="inline-grid size-12 place-items-center rounded-full bg-foreground/[7%] text-heading-foreground transition-colors group-hover/filepicker:bg-heading-foreground group-hover/filepicker:text-heading-background"
                             >
                                 <x-tabler-plus />
                             </span>

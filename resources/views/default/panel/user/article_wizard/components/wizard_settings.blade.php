@@ -10,13 +10,13 @@
 @endphp
 
 <div
-    class="lqd-article-wizard group/article-wizard grid grid-flow-row lg:grid-flow-col lg:[grid-template-columns:41%_59%] [&.showing-results]:[grid-template-columns:100%]"
+    class="lqd-article-wizard group/article-wizard grid grid-flow-row group-[&.showing-results]/article-wizard:[grid-template-columns:100%] lg:grid-flow-col lg:[grid-template-columns:41%_59%] [&.showing-results]:[grid-template-columns:100%]"
     data-step="0"
     style="--current-step: 0;"
     x-data="{ advancedSettingsShowing: false, 'activeFilter': 'Keywords' }"
 >
     <div
-        class="lqd-article-wizard-prompt-area w-full"
+        class="lqd-article-wizard-prompt-area w-full group-[&.showing-results]/article-wizard:hidden"
         id="settings"
     >
         <div class="flex w-full flex-col gap-6 lg:pe-14">

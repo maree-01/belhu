@@ -2,6 +2,8 @@
 
 namespace App\Models\Finance;
 
+use App\Domains\Entity\Models\Entity;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
 class AiChatModelPlan extends Pivot
@@ -11,7 +13,12 @@ class AiChatModelPlan extends Pivot
     public $timestamps = false;
 
     protected $fillable = [
-        'ai_model_id',
+        'entity_id',
         'plan_id',
     ];
+
+    public function entity(): BelongsTo
+    {
+        return $this->belongsTo(Entity::class);
+    }
 }

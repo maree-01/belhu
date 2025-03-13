@@ -17,6 +17,9 @@
 		text-transform: unset;
 		letter-spacing: inherit;
 	}
+    [x-cloak] {
+        display: none !important;
+    }
 }
 
 @layer utilities {
@@ -43,3 +46,6 @@
 @import './layout/layout.scss';
 @import './panel/panel.scss';
 @import './components/components.scss';
+
+@import './focus-mode/focus-mode';
+@import './advanced-image-editor/advanced-image-editor';

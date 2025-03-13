@@ -14,7 +14,7 @@
         <p class="mb-8">
             @lang('Customize the visual appearence of MagicAI with a single click and complement the design principles of your brand identity. ')
         </p>
-
+        <x-alerts.payment-status :payment-status="$paymentStatus" />
         <div class="flex flex-col gap-16">
             <ul class="flex w-full justify-between gap-3 rounded-full bg-foreground/10 p-1 text-xs font-medium">
                 @foreach ($filters as $filter)
@@ -32,7 +32,6 @@
                     </li>
                 @endforeach
             </ul>
-
             {{-- data --}}
             @foreach ($items ?? [] as $theme)
                 <x-card
@@ -45,7 +44,7 @@
                     <figure class="mb-30 relative overflow-hidden">
                         @if ($theme['version'] != $theme['db_version'] && $theme['slug'] != 'default' && $theme['installed'])
                             <p
-                                class="absolute end-5 top-5 m-0 rounded bg-purple-50 px-2 py-1 text-4xs font-semibold uppercase leading-tight tracking-widest text-purple-700 text-white ring-1 ring-inset ring-purple-700/10">
+                                class="absolute end-5 top-5 m-0 rounded bg-purple-50 px-2 py-1 text-4xs font-semibold uppercase leading-tight tracking-widest text-purple-700 ring-1 ring-inset ring-purple-700/10">
                                 <a href="{{ route('dashboard.admin.themes.activate', ['slug' => $theme['slug']]) }}">Update Available</a>
                             </p>
                         @endif
