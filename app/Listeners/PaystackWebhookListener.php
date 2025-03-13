@@ -4,15 +4,21 @@ namespace App\Listeners;
 
 use App\Events\PaystackWebhookEvent;
 use App\Models\WebhookHistory;
+use App\Services\PaymentGateways\Contracts\CreditUpdater;
 use Carbon\Carbon;
+use Exception;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use JsonException;
 use Laravel\Cashier\Subscription as Subscriptions;
 use Throwable;
 
-class PaystackWebhookListener
+class PaystackWebhookListener implements ShouldQueue
 {
+    use CreditUpdater;
+
     /**
      * Create the event listener.
      */
@@ -23,21 +29,11 @@ class PaystackWebhookListener
 
     use InteractsWithQueue;
 
-    public $afterCommit = true;
+    public bool $afterCommit = true;
 
-    /**
-     * The name of the queue the job should be sent to.
-     *
-     * @var string|null
-     */
-    public $queue = 'default';
+    public string $queue = 'default';
 
-    /**
-     * The time (seconds) before the job should be processed.
-     *
-     * @var int
-     */
-    public $delay = 0; //60
+    public int $delay = 0;
 
     /**
      * Handle the event.
@@ -46,46 +42,41 @@ class PaystackWebhookListener
     {
         try {
             $payload = $event->payload;
-            $method = 'handle'.Str::studly(str_replace('.', '_', $payload['event']));
+            $method = 'handle' . Str::studly(str_replace('.', '_', $payload['event']));
             if (method_exists($this, $method)) {
                 $response = $this->{$method}($payload);
             }
-        } catch (\Exception $ex) {
-            Log::error("PaystackWebhookListener::handle()\n".$ex->getMessage());
+        } catch (Exception $ex) {
+            Log::error("PaystackWebhookListener::handle()\n" . $ex->getMessage());
         }
     }
 
     /**
      * Handle a job failure.
+     *
+     * @throws JsonException
      */
     public function failed(PaystackWebhookEvent $event, Throwable $exception): void
     {
         $space = '*****';
-        $msg = '\n'.$space.'\n'.$space;
-        $msg = $msg.json_encode($event->payload);
-        $msg = $msg.'\n'.$space.'\n';
-        $msg = $msg.'\n'.$exception.'\n';
-        $msg = $msg.'\n'.$space.'\n'.$space;
-
+        $msg = '\n' . $space . '\n' . $space;
+        $msg .= json_encode($event->payload, JSON_THROW_ON_ERROR);
+        $msg .= '\n' . $space . '\n';
+        $msg .= '\n' . $exception . '\n';
+        $msg .= '\n' . $space . '\n' . $space;
         Log::error($msg);
     }
 
-    protected function successMethod(array $parameters = [])
-    {
+    protected function successMethod(array $parameters = []): void {}
 
-    }
+    protected function missingMethod(array $parameters = []): void {}
 
-    protected function missingMethod(array $parameters = [])
-    {
+    public function handleChargeSuccess($payload): void {}
 
-    }
-
-    public function handleChargeSuccess($payload) //A successful charge was made
-    {
-
-    }
-
-    public function handlesubScriptionDisable($payload) //A subscription desabled
+    /**
+     * @throws Exception
+     */
+    public function handlesubScriptionDisable($payload): void //A subscription disabled
     {
         $subscriptionData = $payload['data'];
         // Extract relevant subscription data
@@ -103,7 +94,7 @@ class PaystackWebhookListener
         $authorization = $subscriptionData['authorization'];
         $authorizationCode = $authorization['authorization_code'];
         // Save to Webhook History
-        $newData = new WebhookHistory();
+        $newData = new WebhookHistory;
         $newData->gatewaycode = 'paystack';
         $newData->webhook_id = $authorizationCode;
         $newData->event_type = 'subscription.disable';
@@ -117,12 +108,14 @@ class PaystackWebhookListener
         $newData->save();
 
         $currentSubscription = Subscriptions::where('stripe_id', $subscriptionCode)->first();
-        if ($currentSubscription != null && $currentSubscription->stripe_status != 'cancelled') {
+        if ($currentSubscription !== null && $currentSubscription->stripe_status !== 'cancelled') {
             $currentSubscription->stripe_status = 'cancelled';
             $currentSubscription->ends_at = Carbon::now();
             $currentSubscription->save();
             $newData->status = 'checked';
             $newData->save();
+
+            self::creditDecreaseCancelPlan($currentSubscription->user, $currentSubscription->plan);
         }
     }
 }

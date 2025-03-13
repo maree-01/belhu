@@ -3,22 +3,17 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\User;
-use Illuminate\Validation\Rules\Password;
-use Illuminate\Support\Facades\Auth;
+use Exception;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
-use App\Models\Setting;
-use Illuminate\Support\Facades\Validator;
-use App\Jobs\SendPasswordResetEmail;
-use App\Jobs\SendConfirmationEmail;
-use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Laravel\Socialite\Facades\Socialite;
 
 class SocialLoginController extends Controller
 {
-
     /// Social Login with Google
     /**
      * Social Login with Google
@@ -30,13 +25,17 @@ class SocialLoginController extends Controller
      *      summary="Social Login with Google",
      *      description="Social Login with Google",
      *      security={{ "passport": {} }},
+     *
      *      @OA\RequestBody(
      *         required=true,
      *         description="Google token data",
+     *
      *         @OA\MediaType(
      *             mediaType="multipart/form-data",
+     *
      *             @OA\Schema(
      *                 type="object",
+     *
      *                 @OA\Property(
      *                     property="google_token",
      *                     description="Google Access Token",
@@ -50,13 +49,16 @@ class SocialLoginController extends Controller
      *             ),
      *         ),
      *     ),
+     *
      *      @OA\Response(
      *          response=200,
      *          description="Successful operation",
+     *
      *          @OA\JsonContent(
      *              type="object",
      *          ),
      *      ),
+     *
      *      @OA\Response(
      *          response=401,
      *          description="Unauthenticated",
@@ -66,31 +68,30 @@ class SocialLoginController extends Controller
      *          description="Precondition Failed",
      *      ),
      * )
-    */
-    public function google(Request $request)
+     */
+    public function google(Request $request): JsonResponse
     {
 
-        if($request->google_id == 'undefined' || $request->google_token == 'undefined' || $request->google_id == '' || $request->google_token == '' || $request->google_id == null || $request->google_token == null) {
+        if (empty($request->google_id) || empty($request->google_token)) {
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => __('Invalid token'),
             ], 412);
         }
 
         $googleUser = Socialite::driver('google')->userFromToken($request->google_token);
 
-        if(!$googleUser) {
-            Log::info("Sign in with Google - Invalid token - User not found");
+        if (! $googleUser) {
+            Log::info('Sign in with Google - Invalid token - User not found');
+
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => __('Invalid token - User not found'),
             ], 412);
-            
+
         }
 
         $checkUser = User::where('email', $googleUser->getEmail())->exists();
-        $settings = Setting::first();
-
         $nameParts = explode(' ', $googleUser->getName());
         $name = $nameParts[0] ?? '';
         $surname = $nameParts[1] ?? '';
@@ -103,40 +104,38 @@ class SocialLoginController extends Controller
             $user->affiliate_code = $user->affiliate_code ?? Str::upper(Str::random(12));
             $user->save();
         } else {
-            $user = User::updateOrCreate([
+            $user = User::query()->updateOrCreate([
                 'google_id' => $googleUser->id,
             ], [
-                'name' => $name,
-                'surname' => $surname,
-                'email' => $googleUser->getEmail(),
-                'google_token' => $googleUser->token,
+                'name'                 => $name,
+                'surname'              => $surname,
+                'email'                => $googleUser->getEmail(),
+                'google_token'         => $googleUser->token,
                 'google_refresh_token' => $googleUser->refreshToken,
-                'avatar' => $googleUser->getAvatar(),
-                'remaining_words' => explode(',', $settings->free_plan)[0],
-                'remaining_images' => explode(',', $settings->free_plan)[1] ?? 0,
-                'password' => Hash::make(Str::random(12)),
-                'affiliate_code' => Str::upper(Str::random(12)),
-                'email_verified_at' => now(),
+                'avatar'               => $googleUser->getAvatar(),
+                'password'             => Hash::make(Str::random(12)),
+                'affiliate_code'       => Str::upper(Str::random(12)),
+                'email_verified_at'    => now(),
             ]);
+            $user->updateCredits(setting('freeCreditsUponRegistration', User::getFreshCredits()));
         }
 
         $token = $user->createToken('google')->accessToken;
 
-        if($token != null) {
+        if ($token !== null) {
             return response()->json([
                 'access_token' => $token,
             ], 200);
         } else {
-            Log::info("Sign in with Google - Invalid passport token");
+            Log::info('Sign in with Google - Invalid passport token');
+
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => __('Invalid passport token'),
             ], 412);
         }
 
     }
-
-
 
     /// Social Login with Apple
     /**
@@ -149,13 +148,17 @@ class SocialLoginController extends Controller
      *      summary="Social Login with Apple",
      *      description="Social Login with Apple",
      *      security={{ "passport": {} }},
+     *
      *      @OA\RequestBody(
      *         required=true,
      *         description="Apple token data",
+     *
      *         @OA\MediaType(
      *             mediaType="multipart/form-data",
+     *
      *             @OA\Schema(
      *                 type="object",
+     *
      *                 @OA\Property(
      *                     property="apple_token",
      *                     description="Apple Access Token",
@@ -169,13 +172,16 @@ class SocialLoginController extends Controller
      *             ),
      *         ),
      *     ),
+     *
      *      @OA\Response(
      *          response=200,
      *          description="Successful operation",
+     *
      *          @OA\JsonContent(
      *              type="object",
      *          ),
      *      ),
+     *
      *      @OA\Response(
      *          response=401,
      *          description="Unauthenticated",
@@ -185,39 +191,38 @@ class SocialLoginController extends Controller
      *          description="Precondition Failed",
      *      ),
      * )
-    */
-    public function apple(Request $request)
+     */
+    public function apple(Request $request): JsonResponse
     {
-
-        if($request->apple_id == 'undefined' || $request->apple_token == 'undefined' || $request->apple_id == '' || $request->apple_token == '' || $request->apple_id == null || $request->apple_token == null) {
+        if (empty($request->apple_id) || empty($request->apple_token)) {
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => __('Invalid token'),
             ], 412);
         }
 
-        try{
-           $appleUser = Socialite::driver('apple')->userFromToken($request->apple_id); 
-        } catch (\Exception $e) {
-            Log::error("Sign in with Apple : ".$e->getMessage());
+        try {
+            $appleUser = Socialite::driver('apple')->userFromToken($request->apple_id);
+        } catch (Exception $e) {
+            Log::error('Sign in with Apple : ' . $e->getMessage());
+
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => __('Invalid token - User not found'),
             ], 500);
         }
 
-        if(!$appleUser) {
-            Log::warning("Sign in with Apple - Invalid token - User not found");
+        if (! $appleUser) {
+            Log::warning('Sign in with Apple - Invalid token - User not found');
+
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => __('Invalid token - User not found'),
             ], 412);
-            
+
         }
 
         $checkUser = User::where('email', $appleUser->getEmail())->exists();
-        $settings = Setting::first();
-
         $nameParts = explode(' ', $appleUser->getName());
         $name = $nameParts[0] ?? '';
         $surname = $nameParts[1] ?? '';
@@ -230,38 +235,35 @@ class SocialLoginController extends Controller
             $user->affiliate_code = $user->affiliate_code ?? Str::upper(Str::random(12));
             $user->save();
         } else {
-            $user = User::updateOrCreate([
+            $user = User::query()->updateOrCreate([
                 'apple_id' => $appleUser->id,
             ], [
-                'name' => $name,
-                'surname' => $surname,
-                'email' => $appleUser->getEmail(),
-                'apple_token' => $appleUser->token,
+                'name'                => $name,
+                'surname'             => $surname,
+                'email'               => $appleUser->getEmail(),
+                'apple_token'         => $appleUser->token,
                 'apple_refresh_token' => $appleUser->refreshToken,
-                'avatar' => $appleUser->getAvatar() ?? 'assets/img/auth/default-avatar.png',
-                'remaining_words' => explode(',', $settings->free_plan)[0],
-                'remaining_images' => explode(',', $settings->free_plan)[1] ?? 0,
-                'password' => Hash::make(Str::random(12)),
-                'affiliate_code' => Str::upper(Str::random(12)),
-                'email_verified_at' => now(),
+                'avatar'              => $appleUser->getAvatar() ?? 'assets/img/auth/default-avatar.png',
+                'password'            => Hash::make(Str::random(12)),
+                'affiliate_code'      => Str::upper(Str::random(12)),
+                'email_verified_at'   => now(),
             ]);
+            $user->updateCredits(setting('freeCreditsUponRegistration', User::getFreshCredits()));
         }
 
         $token = $user->createToken('apple')->accessToken;
-
-        if($token != null) {
+        if ($token) {
             return response()->json([
                 'access_token' => $token,
             ], 200);
-        } else {
-            Log::info("Sign in with Apple - Invalid passport token");
-            return response()->json([
-                'status' => false,
-                'message' => __('Invalid passport token'),
-            ], 412);
         }
 
+        Log::info('Sign in with Apple - Invalid passport token');
+
+        return response()->json([
+            'status'  => false,
+            'message' => __('Invalid passport token'),
+        ], 412);
+
     }
-
-
 }

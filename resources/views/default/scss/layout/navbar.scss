@@ -6,7 +6,17 @@
 	@apply lg:sticky top-0 start-0 z-40 lg:backdrop-blur-md lg:backdrop-brightness-105;
 }
 
-@media (min-width: 992px) {
+.top-notice-bar-visible {
+
+	~ .lqd-page {
+
+		.lqd-navbar-expander {
+			top: calc(var(--top-notice-bar-height) + (var(--header-height) / 2));
+		}
+	}
+}
+
+@media (min-width: theme('screens.lg')) {
 
 	.navbar-shrinked {
 		--navbar-width: 80px;

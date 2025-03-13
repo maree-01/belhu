@@ -108,14 +108,19 @@
                                 <span class="md:hidden">{{ __('Upload a document or image') }}</span>
                             </button>
                         </div>
+
+                        <div class="max-md:hidden md:ms-auto"></div>
+
                         @if (setting('user_prompt_library') == null || setting('user_prompt_library'))
                             <div @class([
-                                'pointer-events-auto flex items-center max-md:flex-col max-md:items-start max-md:gap-4 md:ms-auto',
+                                'pointer-events-auto flex items-center max-md:flex-col max-md:items-start max-md:gap-4',
                                 'max-md:pt-4' => $category->slug === 'ai_pdf',
                             ])>
-                                <button
+                                <x-button
                                     class="lqd-chat-templates-trigger size-10 flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full text-heading-foreground transition-all max-md:h-auto max-md:w-auto max-md:bg-transparent md:hover:bg-secondary md:hover:text-secondary-foreground"
                                     type="button"
+                                    variant="ghost"
+                                    size="none"
                                     @click.prevent="togglePromptLibraryShow()"
                                 >
                                     <x-tabler-article
@@ -125,10 +130,9 @@
                                     <span class="md:hidden">
                                         {{ __('Browse prompt library') }}
                                     </span>
-                                </button>
+                                </x-button>
                             </div>
                         @endif
-
                         {{-- Brand Voice --}}
                         <div class="pointer-events-auto flex items-center max-md:flex-col max-md:items-start max-md:gap-4 max-md:pb-4">
                             <x-modal
@@ -205,135 +209,46 @@
                                 </x-slot:modal>
                             </x-modal>
                         </div>
-
-                        @php
-                            $planId = getCurrentActiveSubscription()?->plan_id ?? 0;
-
-                            if ($planId) {
-                                $models = \App\Models\AiModel::query()
-                                    ->whereHas('aiFinance', function ($query) use ($planId) {
-                                        $query->where('plan_id', $planId);
-                                    })
-                                    ->whereHas('tokens', function ($query) {
-                                        $query->where('type', 'word');
-                                    })
-                                    ->get();
-                            }else {
-                                $models = \App\Models\AiModel::query()
-                                    ->where('is_selected', 1)
-                                    ->whereHas('tokens', function ($query) {
-                                        $query->where('type', 'word');
-                                    })
-                                    ->get();
-                            }
-                        @endphp
-                        @if($models->count())
-                            {{-- Chatbot front model --}}
-                            <div class="pointer-events-auto flex items-center max-md:flex-col max-md:items-start max-md:gap-4 max-md:pb-4">
-                                <x-modal
-                                        class="lqd-chat-brand-voice"
-                                        id="chatbotFrontmodel"
-                                        title="{{ __('Chatbot model') }}"
-                                >
-                                    <x-slot:trigger
-                                            class="lqd-chat-brand-voice-trigger size-10 flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full p-0 text-heading-foreground transition-all max-md:h-auto max-md:w-auto max-md:bg-transparent md:hover:bg-secondary md:hover:text-secondary-foreground"
-                                            variant="none"
-                                    >
-                                        <x-tabler-brand-openai
-                                                class="size-6"
-                                                stroke-width="1.5"
-                                        />
-                                        <span class="md:hidden">
-                                        {{ __('Chatbot model') }}
-                                    </span>
-                                    </x-slot:trigger>
-
-                                    <x-slot:modal
-                                            x-data
-                                    >
-                                        <div class="flex flex-col gap-6">
-
-
-
-                                            <x-forms.input
-                                                    id="chatbot_front_model"
-                                                    type="select"
-                                                    size="lg"
-                                                    name="chatbot_front_model"
-                                                    label="{{ __('Select model') }}"
-                                            >
-                                                <option value="">
-                                                    {{ __('Select model') }}
-                                                </option>
-                                                @foreach($models as $model)
-                                                    <option value="{{ $model->key }}">
-                                                        {{ $model->selected_title }}
-                                                    </option>
-                                                @endforeach
-
-                                                {{--                                            @foreach (auth()->user()->getCompanies() ?? [] as $company)--}}
-                                                {{--                                                <option--}}
-                                                {{--                                                    data-tone_of_voice="{{ $company->tone_of_voice }}"--}}
-                                                {{--                                                    value="{{ $company->id }}"--}}
-                                                {{--                                                >--}}
-                                                {{--                                                    {{ $company->name }}--}}
-                                                {{--                                                </option>--}}
-                                                {{--                                            @endforeach--}}
-                                            </x-forms.input>
-
-                                            <div class="border-t pt-3 text-end">
-                                                <x-button
-                                                        @click.prevent="modalOpen = false"
-                                                        type="button"
-                                                        variant="outline"
-                                                >
-                                                    {{ __('Cancel') }}
-                                                </x-button>
-
-                                                <x-button
-                                                        type="button"
-                                                        @click.prevent="modalOpen = false"
-                                                        onclick="toastr.success('Chat model selected');$('#brandVoiceModal').modal('hide');"
-                                                >
-                                                    {{ __('Done') }}
-                                                </x-button>
-                                            </div>
-                                        </div>
-                                    </x-slot:modal>
-                                </x-modal>
-                            </div>
-                        @endif
                     </div>
 
                     {{-- Record Audio --}}
                     <div class="pointer-events-auto max-md:absolute max-md:bottom-[10px] max-md:end-2">
-                        <button
+                        <x-button
                             class="lqd-chat-record-trigger size-10 flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full text-heading-foreground transition-all max-md:h-auto max-md:w-auto max-md:bg-transparent md:hover:bg-secondary md:hover:text-secondary-foreground [&.inactive]:hidden"
                             id="voice_record_button"
                             type="button"
-                            title={{ __('Record audio') }}
+                            variant="none"
+                            size="none"
+                            title="{{ __('Record audio') }}"
                         >
                             <x-tabler-microphone
                                 class="size-6"
                                 stroke-width="1.5"
                             />
-                        </button>
-                        <button
+                        </x-button>
+                        <x-button
                             class="lqd-chat-record-stop-trigger size-10 hidden shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full text-heading-foreground transition-all max-md:h-auto max-md:w-auto max-md:bg-transparent md:hover:bg-secondary md:hover:text-secondary-foreground [&.active]:flex"
                             id="voice_record_stop_button"
                             type="button"
-                            title={{ __('Stop recording') }}
+                            variant="none"
+                            size="none"
+                            title="{{ __('Stop recording') }}"
                         >
                             <x-tabler-player-pause-filled
                                 class="size-5"
                                 stroke-width="1.5"
                             />
-                        </button>
+                        </x-button>
                     </div>
                 </div>
             </div>
         </div>
 
+        <input
+            id="assistant"
+            type="hidden"
+            value="{{ $category->assistant }}"
+        />
         <input
             id="chatbot_id"
             type="hidden"

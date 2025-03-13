@@ -158,7 +158,10 @@
         </div>
     @endsection
     @section('titlebar_actions_after')
-        <div class="lqd-docs-view-toggle lqd-view-toggle relative z-1 mt-3 flex w-full items-center gap-2 lg:-mb-16 lg:ms-auto lg:justify-end">
+        <div @class([
+            'lqd-docs-view-toggle lqd-view-toggle relative z-1 flex w-full items-center gap-2 lg:ms-auto lg:justify-end',
+            'mt-3 lg:-mb-16' => blank($currfolder),
+        ])>
             <button
                 class="lqd-view-toggle-trigger size-7 inline-flex items-center justify-center rounded-md transition-colors hover:bg-foreground/5 [&.active]:bg-foreground/5"
                 :class="$store.docsViewMode.docsViewMode === 'list' && 'active'"

@@ -10,15 +10,15 @@ class UserPebblely extends Model
 {
     use HasFactory;
 
-    protected $table = "pebblely";
+    protected $table = 'pebblely';
 
     protected $fillable = [
-        "user_id",
-        "image"
+        'user_id',
+        'image',
     ];
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id', "id");
+        return $this->belongsTo(User::class, 'user_id', 'id');
     }
 }

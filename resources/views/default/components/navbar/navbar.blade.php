@@ -69,52 +69,19 @@
 
             </a>
         </div>
+
         <nav
             class="lqd-navbar-nav"
             id="navbar-menu"
         >
             <ul class="lqd-navbar-ul">
-                @php
-                    $items = app(\App\Services\Common\MenuService::class)->generate();
+                @include('panel.layout.partials.menu')
+                <!-- Menu cache -->
 
-                    $isAdmin = \Auth::user()?->isAdmin();
-
-                @endphp
-
-                @foreach ($items as $item)
-                    @if (data_get($item, 'is_admin'))
-                        @if ($isAdmin)
-                            @if (data_get($item, 'show_condition', true) && data_get($item, 'is_active'))
-                                @if ($item['children_count'])
-                                    @includeIf('default.components.navbar.partials.types.item-dropdown')
-                                @else
-                                    @includeIf('default.components.navbar.partials.types.' . $item['type'])
-                                @endif
-                            @endif
-                        @endif
-                    @else
-                        @if (data_get($item, 'show_condition', true) && data_get($item, 'is_active'))
-                            @if ($item['children_count'])
-                                @includeIf('default.components.navbar.partials.types.item-dropdown')
-                            @else
-                                @includeIf('default.components.navbar.partials.types.' . $item['type'])
-                            @endif
-                        @endif
-                    @endif
-                @endforeach
-
-                {{-- Admin menu items --}}
-                @if (Auth::user()->type == 'admin')
-                    {{-- <x-navbar.item>
-                        <x-navbar.link
-                            label="{{ __('ChatBot') }}"
-                            href="dashboard.chatbot.index"
-                            icon="tabler-message-2-code"
-                            active-condition="{{ activeRoute('dashboard.chatbot.*') }}"
-                            new
-                        />
-                    </x-navbar.item> --}}
-
+                {{--                {!!--}}
+                {{--                 \App\Caches\BladeCache::navMenu(fn() => view('panel.layout.partials.menu')->render())--}}
+                {{--                !!}--}}
+                @if (Auth::user()->isAdmin())
                     @if ($app_is_not_demo && setting('premium_support', true))
                         <x-navbar.item>
                             <x-navbar.link
@@ -142,7 +109,7 @@
                 </x-navbar.item>
 
                 <x-navbar.item class="pb-navbar-link-pb pe-navbar-link-pe ps-navbar-link-ps pt-navbar-link-pt group-[&.navbar-shrinked]/body:hidden">
-                    <x-remaining-credit class="text-2xs" />
+                    <x-credit-list />
                 </x-navbar.item>
 
                 @if ($setting->feature_affilates)

@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Models\YokassaSubscriptions;
+use App\Models\Finance\YokassaSubscription;
 use App\Services\GatewaySelector;
 use Illuminate\Console\Command;
 
@@ -14,7 +14,7 @@ class CheckYookassaCommand extends Command
 
     public function handle(): void
     {
-        $items = YokassaSubscriptions::query()
+        $items = YokassaSubscription::query()
             ->where('subscription_status', 'active')
             ->orWhere('subscription_status', 'yokassa_approved')
             ->get();

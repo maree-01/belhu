@@ -3,6 +3,8 @@
 namespace App\Services\PaymentGateways;
 
 use App\Actions\CreateActivity;
+use App\Enums\Plan\FrequencyEnum;
+use App\Enums\Plan\TypeEnum;
 use App\Events\PaystackWebhookEvent;
 use App\Models\Coupon;
 use App\Models\Currency;
@@ -10,13 +12,13 @@ use App\Models\CustomBilingPlans;
 use App\Models\GatewayProducts;
 use App\Models\Gateways;
 use App\Models\OldGatewayProducts;
-use App\Models\PaymentPlans;
 use App\Models\PaystackPaymentInfo;
+use App\Models\Plan;
 use App\Models\Setting;
-use App\Models\User;
 use App\Models\UserOrder;
+use App\Services\PaymentGateways\Contracts\CreditUpdater;
+use Exception;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -25,11 +27,11 @@ use Laravel\Cashier\Subscription as Subscriptions;
 /**
  * Base functions foreach payment gateway
  *
- * @param saveAllProducts                                       || Used to generate new product id and price id of all saved membership plans in paypal gateway.
- * @param saveProduct ($plan)                                   || Saves Membership plan product in the gateway.
- * @param subscribe ($plan)                                     || Displays Payment Page of the gateway.
+ * @param saveAllProducts                                       || Used to generate new product id and price id of all saved membership plans in paypal gateway
+ * @param saveProduct ($plan)                                   || Saves Membership plan product in the gateway
+ * @param subscribe ($plan)                                     || Displays Payment Page of the gateway
  * @param subscribeCheckout (Request $request, $referral= null) || -
- * @param prepaid ($plan)                                       || Displays Payment Page of the gateway for prepaid plans.
+ * @param prepaid ($plan)                                       || Displays Payment Page of the gateway for prepaid plans
  * @param prepaidCheckout (Request $request, $referral= null)   || -
  * @param getSubscriptionStatus ($incomingUserId = null)        ||
  * @param getSubscriptionDaysLeft                               ||
@@ -40,6 +42,8 @@ use Laravel\Cashier\Subscription as Subscriptions;
  */
 class PaystackService
 {
+    use CreditUpdater;
+
     protected static $GATEWAY_CODE = 'paystack';
 
     protected static $GATEWAY_NAME = 'PayStack';
@@ -60,12 +64,12 @@ class PaystackService
     {
         try {
             // Get all membership plans
-            $plans = PaymentPlans::where('active', 1)->get();
+            $plans = Plan::where('active', 1)->get();
             foreach ($plans as $plan) {
                 self::saveProduct($plan);
             }
-        } catch (\Exception $ex) {
-            Log::error("paystack::saveAllProducts()\n".$ex->getMessage());
+        } catch (Exception $ex) {
+            Log::error("paystack::saveAllProducts()\n" . $ex->getMessage());
 
             return back()->with(['message' => $ex->getMessage(), 'type' => 'error']);
         }
@@ -76,6 +80,7 @@ class PaystackService
     public static function saveProduct($plan)
     {
         $gateway = Gateways::where('code', self::$GATEWAY_CODE)->where('is_active', 1)->first() ?? abort(404);
+
         try {
             //1 begain db transaction
             DB::beginTransaction();
@@ -89,10 +94,10 @@ class PaystackService
             $product = GatewayProducts::where(['plan_id' => $plan->id, 'gateway_code' => self::$GATEWAY_CODE])->first();
 
             $data = [
-                'name' => $plan->name,
+                'name'        => $plan->name,
                 'description' => $plan->name,
-                'price' => $price == 0 ? 1000 : $price,
-                'currency' => $currency,
+                'price'       => $price == 0 ? 1000 : $price,
+                'currency'    => $currency,
             ];
             // Create product in every situation. maybe user updated paystack credentials.
             $newProduct = self::curl_req(self::$product_endpoint, $key, $data);
@@ -101,7 +106,7 @@ class PaystackService
                     $oldProductId = $product->product_id; // Product has been created before
                 } // ELSE Product has not been created before but record exists. Create new product and update record.
             } else {
-                $product = new GatewayProducts();
+                $product = new GatewayProducts;
                 $product->plan_id = $plan->id;
                 $product->gateway_code = self::$GATEWAY_CODE;
                 $product->gateway_title = self::$GATEWAY_NAME;
@@ -110,17 +115,17 @@ class PaystackService
             $product->plan_name = $plan->name;
             $product->save();
             // if not lifetime or free or onetime then create priceID
-            if ($plan->price != 0 && $plan->type == 'subscription' && $plan->frequency !== 'lifetime_monthly' && $plan->frequency !== 'lifetime_yearly') {
-                $interval = $plan->frequency == 'monthly' ? 'monthly' : 'annually';
+            if ($plan->price != 0 && $plan->type == TypeEnum::SUBSCRIPTION->value && $plan->frequency !== FrequencyEnum::LIFETIME_MONTHLY->value && $plan->frequency !== FrequencyEnum::LIFETIME_YEARLY->value) {
+                $interval = $plan->frequency == FrequencyEnum::MONTHLY->value ? FrequencyEnum::MONTHLY->value : 'annually';
                 $billingPlan = self::curl_req(self::$plan_endpoint, $key, [
-                    'name' => $plan->name,
-                    'interval' => $interval,
-                    'amount' => $price,
+                    'name'        => $plan->name,
+                    'interval'    => $interval,
+                    'amount'      => $price,
                     'description' => $product->product_id,
-                    'currency' => $currency,
+                    'currency'    => $currency,
                 ]);
                 if ($product->price_id != null) {
-                    $history = new OldGatewayProducts();
+                    $history = new OldGatewayProducts;
                     $history->plan_id = $plan->id;
                     $history->plan_name = $plan->name;
                     $history->gateway_code = self::$GATEWAY_CODE;
@@ -138,9 +143,9 @@ class PaystackService
             }
             $product->save();
             DB::commit();
-        } catch (\Exception $ex) {
+        } catch (Exception $ex) {
             DB::rollBack();
-            Log::error(self::$GATEWAY_CODE."-> saveProduct():\n".$ex->getMessage());
+            Log::error(self::$GATEWAY_CODE . "-> saveProduct():\n" . $ex->getMessage());
 
             return back()->with(['message' => $ex->getMessage(), 'type' => 'error']);
         }
@@ -150,10 +155,11 @@ class PaystackService
     public static function subscribe($plan)
     {
         $gateway = Gateways::where('code', self::$GATEWAY_CODE)->where('is_active', 1)->first() ?? abort(404);
+
         try {
             DB::beginTransaction();
             $planId = $plan->id;
-            $settings = Setting::first();
+            $settings = Setting::getCache();
             $exception = null;
             $orderId = Str::random(12);
             $currency = Currency::where('id', $gateway->currency)->first()->code;
@@ -181,21 +187,21 @@ class PaystackService
                 if ($newDiscountedPrice != floor($newDiscountedPrice)) {
                     $newDiscountedPrice = number_format($newDiscountedPrice, 2);
                 }
-                if ($plan->price != 0 && $plan->type == 'subscription' && $plan->frequency !== 'lifetime_monthly' && $plan->frequency !== 'lifetime_yearly') {
-                    $interval = $plan->frequency == 'monthly' ? 'monthly' : 'annually';
+                if ($plan->price != 0 && $plan->type == TypeEnum::SUBSCRIPTION->value && $plan->frequency !== FrequencyEnum::LIFETIME_MONTHLY->value && $plan->frequency !== FrequencyEnum::LIFETIME_YEARLY->value) {
+                    $interval = $plan->frequency == FrequencyEnum::MONTHLY->value ? FrequencyEnum::MONTHLY->value : 'annually';
                     $billingPlan = self::curl_req(self::$plan_endpoint, $key, [
-                        'name' => 'discount_item_'.time(),
-                        'interval' => $interval,
-                        'amount' => (int) (((float) $newDiscountedPrice) * 100),
-                        'description' => 'coupon_'.$coupon->code.'_user_'.$user->id.'_plan_'.$plan->id,
-                        'currency' => $currency,
+                        'name'        => 'discount_item_' . time(),
+                        'interval'    => $interval,
+                        'amount'      => (int) (((float) $newDiscountedPrice) * 100),
+                        'description' => 'coupon_' . $coupon->code . '_user_' . $user->id . '_plan_' . $plan->id,
+                        'currency'    => $currency,
                     ]);
                     $billingPlanId = $billingPlan['data']['plan_code'];
                 }
                 // remove tax when coupon is applied because its included in the plan price.
                 $newDiscountedPrice -= $taxValue;
             }
-            $payment = new UserOrder();
+            $payment = new UserOrder;
             $payment->order_id = $orderId;
             $payment->plan_id = $plan->id;
             $payment->user_id = $user->id;
@@ -206,20 +212,21 @@ class PaystackService
             $payment->country = $user->country ?? 'Unknown';
             $payment->save();
             DB::commit();
-        } catch (\Exception $ex) {
+        } catch (Exception $ex) {
             DB::rollBack();
-            Log::error(self::$GATEWAY_CODE.'-> subscribe(): '.$ex->getMessage());
+            Log::error(self::$GATEWAY_CODE . '-> subscribe(): ' . $ex->getMessage());
 
             return back()->with(['message' => Str::before($ex->getMessage(), ':'), 'type' => 'error']);
         }
 
-        return view('panel.user.finance.subscription.'.self::$GATEWAY_CODE, compact('plan', 'taxRate', 'taxValue', 'newDiscountedPrice', 'billingPlanId', 'exception', 'orderId', 'productId', 'gateway', 'planId'));
+        return view('panel.user.finance.subscription.' . self::$GATEWAY_CODE, compact('plan', 'taxRate', 'taxValue', 'newDiscountedPrice', 'billingPlanId', 'exception', 'orderId', 'productId', 'gateway', 'planId'));
     }
 
     // tested
     public static function subscribeCheckout(Request $request, $referral = null)
     {
         $gateway = Gateways::where('code', self::$GATEWAY_CODE)->where('is_active', 1)->first() ?? abort(404);
+
         try {
             $planId = $request->input('planID', null);
             $couponID = $request->input('couponID', null);
@@ -233,14 +240,14 @@ class PaystackService
             $payment_response_message = $payment_response['message'];
             $payment_response_reference = $payment_response['reference'];
 
-            $plan = PaymentPlans::where('id', $planId)->first();
+            $plan = Plan::where('id', $planId)->first();
             $payment = UserOrder::where('order_id', $orderId)->first();
-            $user = Auth::user();
+            $user = auth()->user();
 
             $product = GatewayProducts::where(['plan_id' => $plan->id, 'product_id' => $productId, 'gateway_code' => self::$GATEWAY_CODE])->first();
             // check if $product->price_id != to $billingPlanId, if not thats means its custom plan then save it in custom plans table.
             if ($product->price_id != $billingPlanId) {
-                $newcustom = new CustomBilingPlans();
+                $newcustom = new CustomBilingPlans;
                 $newcustom->gateway = self::$GATEWAY_CODE;
                 $newcustom->plan_id = $planId;
                 $newcustom->main_plan_price_id = $product->price_id;
@@ -255,7 +262,7 @@ class PaystackService
             }
 
             // verify transaction with paystack if it was successful then continue
-            $reqs = self::curl_req_get(self::$transaction_verify_endpoint.$payment_response_reference, $key);
+            $reqs = self::curl_req_get(self::$transaction_verify_endpoint . $payment_response_reference, $key);
 
             if ($reqs['status'] == false) { // if something went wrong with the request
                 abort(404);
@@ -266,9 +273,9 @@ class PaystackService
             }
 
             // log the transaction data to database
-            $info = new PaystackPaymentInfo();
-            $info->user_id = Auth::user()->id;
-            $info->email = Auth::user()->email;
+            $info = new PaystackPaymentInfo;
+            $info->user_id = $user->id;
+            $info->email = $user->email;
             $info->reference = $payment_response['reference'] ?? '';
             $info->trans = $payment_response['trans'] ?? '';
             $info->status = $payment_response['status'] ?? '';
@@ -277,7 +284,7 @@ class PaystackService
             $info->trxref = $payment_response['trxref'] ?? '';
             $info->amount = ($reqs['data']['amount'] / 100) ?? '';
             $info->customer_code = $reqs['data']['customer']['customer_code'] ?? '';
-            $info->plan_code = ($reqs['data']['plan'] ?? '').' / '.$planId;
+            $info->plan_code = ($reqs['data']['plan'] ?? '') . ' / ' . $planId;
             $info->currency = $reqs['data']['currency'] ?? '';
             $info->other = $reqs['data']['paidAt'] ?? '';
             $info->save();
@@ -289,7 +296,7 @@ class PaystackService
                 if ($couponID) {
                     $coupon = Coupon::where('code', $couponID)->first();
                     if ($coupon) {
-                        $coupon->usersUsed()->attach(auth()->user()->id);
+                        $coupon->usersUsed()->attach($user->id);
                         $couponID = $coupon->discount;
                         $total -= ($plan->price * ($coupon->discount / 100));
                         if ($total != floor($total)) {
@@ -297,18 +304,18 @@ class PaystackService
                         }
                     }
                 }
-                $subscription = new Subscriptions();
+                $subscription = new Subscriptions;
                 // if its lifetime subscription
                 if ($billingPlanId == 'Not Needed') {
-                    $subscription->stripe_id = 'PSLS-'.strtoupper(Str::random(13));
+                    $subscription->stripe_id = 'PSLS-' . strtoupper(Str::random(13));
                     $subscription->stripe_price = $product->price_id;
-                    $subscription->ends_at = $plan->frequency == 'lifetime_monthly' ? \Carbon\Carbon::now()->addMonths(1) : \Carbon\Carbon::now()->addYears(1);
+                    $subscription->ends_at = $plan->frequency == FrequencyEnum::LIFETIME_MONTHLY->value ? \Carbon\Carbon::now()->addMonths(1) : \Carbon\Carbon::now()->addYears(1);
                     $subscription->auto_renewal = 1;
                     $subscription->stripe_status = 'paystack_approved';
                 } else {
                     $bill_customer_id = $reqs['data']['customer']['id'];
                     $bill_plan_id = $reqs['data']['plan_object']['id'];
-                    $subscription_billing = self::curl_req_get(self::$subscription_endpoint.'?customer='.$bill_customer_id.'&plan='.$bill_plan_id, $key);
+                    $subscription_billing = self::curl_req_get(self::$subscription_endpoint . '?customer=' . $bill_customer_id . '&plan=' . $bill_plan_id, $key);
                     if ($subscription_billing['status'] == false) { // if something went wrong with the request
                         abort(404);
                     }
@@ -334,34 +341,31 @@ class PaystackService
                 $payment->status = 'Success';
                 $payment->save();
 
-                $plan->total_words == -1 ? ($user->remaining_words = -1) : ($user->remaining_words += $plan->total_words);
-                $plan->total_images == -1 ? ($user->remaining_images = -1) : ($user->remaining_images += $plan->total_images);
+                self::creditIncreaseSubscribePlan($user, $plan);
 
-                $user->save();
-
-                CreateActivity::for($user, __('Subscribed'), $plan->name.' '.__('Plan'));
-				\App\Models\Usage::getSingle()->updateSalesCount($total);
+                CreateActivity::for($user, __('Subscribed'), $plan->name . ' ' . __('Plan'));
+                \App\Models\Usage::getSingle()->updateSalesCount($total);
                 DB::commit();
 
-                if (class_exists('App\Events\AffiliateEvent')) {
-                    event(new \App\Events\AffiliateEvent($total, $gateway->currency));
+                if (class_exists('App\Extensions\Affilate\System\Events\AffiliateEvent')) {
+                    event(new \App\Extensions\Affilate\System\Events\AffiliateEvent($total, $gateway->currency));
                 }
 
-                return redirect()->route('dashboard.'.auth()->user()->type.'.index')->with(['message' => __('Thank you for your purchase. Enjoy your remaining words and images.'), 'type' => 'success']);
+                return redirect()->route('dashboard.' . $user->type->value . '.index')->with(['message' => __('Thank you for your purchase. Enjoy your remaining words and images.'), 'type' => 'success']);
 
             } else {
                 DB::rollBack();
                 $msg = 'PaystackController::subscribePay(): Could not find required payment order!';
                 Log::error($msg);
 
-                return redirect()->route('dashboard.'.auth()->user()->type.'.index')->with(['message' => $msg, 'type' => 'error']);
+                return redirect()->route('dashboard.' . $user->type->value . '.index')->with(['message' => $msg, 'type' => 'error']);
             }
 
-        } catch (\Exception $th) {
+        } catch (Exception $th) {
             DB::rollBack();
-            Log::error('PaystackController::subscribePay(): '.$th->getMessage());
+            Log::error('PaystackController::subscribePay(): ' . $th->getMessage());
 
-            return redirect()->route('dashboard.'.auth()->user()->type.'.index')->with(['message' => $th->getMessage(), 'type' => 'error']);
+            return redirect()->route('dashboard.' . $user->type->value . '.index')->with(['message' => $th->getMessage(), 'type' => 'error']);
         }
     }
 
@@ -369,6 +373,7 @@ class PaystackService
     public static function prepaid($plan)
     {
         $gateway = Gateways::where('code', self::$GATEWAY_CODE)->where('is_active', 1)->first() ?? abort(404);
+
         try {
             $taxRate = $gateway->tax;
             $taxValue = taxToVal($plan->price, $taxRate);
@@ -392,17 +397,18 @@ class PaystackService
             if (self::getPaystackProductId($plan->id) == null) {
                 $exception = 'Product ID is not set! Please save Membership Plan again.';
             }
-        } catch (\Exception $th) {
+        } catch (Exception $th) {
             $exception = Str::before($th->getMessage(), ':');
         }
 
-        return view('panel.user.finance.prepaid.'.self::$GATEWAY_CODE, compact('plan', 'newDiscountedPrice', 'taxValue', 'taxRate', 'orderId', 'gateway', 'exception', 'currency'));
+        return view('panel.user.finance.prepaid.' . self::$GATEWAY_CODE, compact('plan', 'newDiscountedPrice', 'taxValue', 'taxRate', 'orderId', 'gateway', 'exception', 'currency'));
     }
 
     // tested
     public static function prepaidCheckout(Request $request)
     {
         $gateway = Gateways::where('code', self::$GATEWAY_CODE)->where('is_active', 1)->first() ?? abort(404);
+
         try {
             DB::beginTransaction();
             $previousRequest = app('request')->create(url()->previous());
@@ -416,7 +422,7 @@ class PaystackService
             }
 
             // verify transaction with paystack if it was successful then continue
-            $reqs = self::curl_req_get(self::$transaction_verify_endpoint.$payment_response_reference, $key);
+            $reqs = self::curl_req_get(self::$transaction_verify_endpoint . $payment_response_reference, $key);
             if ($reqs['status'] == false) { // if something went wrong with the request
                 abort(404);
             }
@@ -424,10 +430,11 @@ class PaystackService
             if ($reqs['data']['status'] != 'success') { // if the transaction was not successful
                 abort(400, $reqs['data']['gateway_response']);
             }
+            $user = auth()->user();
             // log the transaction data to database
-            $info = new PaystackPaymentInfo();
-            $info->user_id = Auth::user()->id;
-            $info->email = Auth::user()->email;
+            $info = new PaystackPaymentInfo;
+            $info->user_id = $user->id;
+            $info->email = $user->email;
             $info->reference = $payment_response['reference'] ?? '';
             $info->trans = $payment_response['trans'] ?? '';
             $info->status = $payment_response['status'] ?? '';
@@ -437,25 +444,25 @@ class PaystackService
 
             $info->amount = ($reqs['data']['amount'] / 100) ?? '';
             $info->customer_code = $reqs['data']['customer']['customer_code'] ?? '';
-            $info->plan_code = ($reqs['data']['plan'] ?? '').' / '.$request->planID;
+            $info->plan_code = ($reqs['data']['plan'] ?? '') . ' / ' . $request->planID;
             $info->currency = $reqs['data']['currency'] ?? '';
             $info->other = $reqs['data']['paidAt'] ?? '';
             $info->save();
 
-            $plan = PaymentPlans::find($request->planID);
+            $plan = Plan::find($request->planID);
             $user = Auth::user();
-            $settings = Setting::first();
+            $settings = Setting::getCache();
 
             $newDiscountedPrice = $plan->price;
             if ($previousRequest->has('coupon')) {
                 $coupon = Coupon::where('code', $previousRequest->input('coupon'))->first();
                 if ($coupon) {
                     $newDiscountedPrice = $plan->price - ($plan->price * ($coupon->discount / 100));
-                    $coupon->usersUsed()->attach(auth()->user()->id);
+                    $coupon->usersUsed()->attach($user->id);
                 }
             }
 
-            $payment = new UserOrder();
+            $payment = new UserOrder;
             $payment->order_id = Str::random(12);
             $payment->plan_id = $plan->id;
             $payment->type = 'prepaid';
@@ -467,19 +474,18 @@ class PaystackService
             $payment->country = $user->country ?? 'Unknown';
             $payment->save();
 
-            $plan->total_words == -1 ? ($user->remaining_words = -1) : ($user->remaining_words += $plan->total_words);
-            $plan->total_images == -1 ? ($user->remaining_images = -1) : ($user->remaining_images += $plan->total_images);
-            $user->save();
-            CreateActivity::for($user, __('Purchased'), $plan->name.' '.__('Token Pack'));
-			\App\Models\Usage::getSingle()->updateSalesCount($newDiscountedPrice);
+            self::creditIncreaseSubscribePlan($user, $plan);
+
+            CreateActivity::for($user, __('Purchased'), $plan->name . ' ' . __('Token Pack'));
+            \App\Models\Usage::getSingle()->updateSalesCount($newDiscountedPrice);
             DB::commit();
 
-            return redirect()->route('dashboard.'.auth()->user()->type.'.index')->with(['message' => __('Thank you for your purchase. Enjoy your remaining words and images.'), 'type' => 'success']);
-        } catch (\Exception $th) {
+            return redirect()->route('dashboard.' . $user->type->value . '.index')->with(['message' => __('Thank you for your purchase. Enjoy your remaining words and images.'), 'type' => 'success']);
+        } catch (Exception $th) {
             DB::rollBack();
-            Log::error('PaystackController::subscribePay(): '.$th->getMessage());
+            Log::error('PaystackController::subscribePay(): ' . $th->getMessage());
 
-            return redirect()->route('dashboard.'.auth()->user()->type.'.index')->with(['message' => $th->getMessage(), 'type' => 'error']);
+            return redirect()->route('dashboard.' . $user->type->value . '.index')->with(['message' => $th->getMessage(), 'type' => 'error']);
         }
 
     }
@@ -496,16 +502,16 @@ class PaystackService
         } else {
             $key = $gateway->live_client_secret;
         }
-        $userId = Auth::user()->id;
+        $user = auth()->user();
         // Get current active subscription
-        $activeSub = getCurrentActiveSubscription($userId);
+        $activeSub = getCurrentActiveSubscription($user->id);
         if ($activeSub != null) {
             if ($activeSub->stripe_price != 'Not Needed') {
-                $reqs = self::curl_req_get(self::$subscription_endpoint.'/'.$activeSub->stripe_id, $key);
+                $reqs = self::curl_req_get(self::$subscription_endpoint . '/' . $activeSub->stripe_id, $key);
                 if ($reqs['status'] == false) { // if something went wrong with the request
-                    Log::error("PaystackController::getSubscriptionRenewDate() :\n".json_encode($reqs));
+                    Log::error("PaystackController::getSubscriptionRenewDate() :\n" . json_encode($reqs));
 
-                    return back()->with(['message' => 'Paystack Gateway : '.json_encode($reqs), 'type' => 'error']);
+                    return back()->with(['message' => 'Paystack Gateway : ' . json_encode($reqs), 'type' => 'error']);
                 }
                 if (isset($reqs['data']['next_payment_date'])) {
                     // return \Carbon\Carbon::parse($reqs['data']['next_payment_date'])->format('F jS, Y');
@@ -531,16 +537,16 @@ class PaystackService
         } else {
             $key = $gateway->live_client_secret;
         }
-        $userId = Auth::user()->id;
+        $user = auth()->user();
         // Get current active subscription
-        $activeSub = getCurrentActiveSubscription($userId);
+        $activeSub = getCurrentActiveSubscription($user->id);
         if ($activeSub != null) {
             if ($activeSub->stripe_price != 'Not Needed') {
-                $reqs = self::curl_req_get(self::$subscription_endpoint.'/'.$activeSub->stripe_id, $key);
+                $reqs = self::curl_req_get(self::$subscription_endpoint . '/' . $activeSub->stripe_id, $key);
                 if ($reqs['status'] == false) { // if something went wrong with the request
-                    Log::error("PaystackController::getSubscriptionRenewDate() :\n".json_encode($reqs));
+                    Log::error("PaystackController::getSubscriptionRenewDate() :\n" . json_encode($reqs));
 
-                    return back()->with(['message' => 'Paystack Gateway : '.json_encode($reqs), 'type' => 'error']);
+                    return back()->with(['message' => 'Paystack Gateway : ' . json_encode($reqs), 'type' => 'error']);
                 }
                 if (isset($reqs['data']['next_payment_date'])) {
                     return \Carbon\Carbon::parse($reqs['data']['next_payment_date'])->format('F jS, Y');
@@ -571,15 +577,15 @@ class PaystackService
         } else {
             $key = $gateway->live_client_secret;
         }
-        $userId = Auth::user()->id;
-        $activeSub = getCurrentActiveSubscription($userId);
+        $user = auth()->user();
+        $activeSub = getCurrentActiveSubscription($user->id);
         if ($activeSub != null) {
             if ($activeSub->stripe_price != 'Not Needed') {
-                $reqs = self::curl_req_get(self::$subscription_endpoint.'/'.$activeSub->stripe_id, $key);
+                $reqs = self::curl_req_get(self::$subscription_endpoint . '/' . $activeSub->stripe_id, $key);
                 if ($reqs['status'] == false) { // if something went wrong with the request
-                    Log::error("PaystackController::getSubscriptionStatus() :\n".json_encode($reqs));
+                    Log::error("PaystackController::getSubscriptionStatus() :\n" . json_encode($reqs));
 
-                    return back()->with(['message' => 'Paystack Gateway : '.json_encode($reqs), 'type' => 'error']);
+                    return back()->with(['message' => 'Paystack Gateway : ' . json_encode($reqs), 'type' => 'error']);
                 }
                 if ($reqs['data']['status'] == 'active') {
                     return true;
@@ -601,10 +607,9 @@ class PaystackService
     // tested
     public static function cancelSubscribedPlan($planId, $subsId)
     {
-        $user = Auth::user();
         $currentSubscription = Subscriptions::where('id', $subsId)->first();
         if ($currentSubscription != null) {
-            $plan = PaymentPlans::where('id', $planId)->first();
+            $plan = Plan::where('id', $planId)->first();
             $gateway = Gateways::where('code', 'paystack')->first();
             if ($gateway == null) {
                 return null;
@@ -617,15 +622,15 @@ class PaystackService
             }
 
             if ($currentSubscription->stripe_price != 'Not Needed') {
-                $get_subscribe_info = self::curl_req_get(self::$cancelSubscribedPlan.'/'.$currentSubscription->stripe_id, $key);
+                $get_subscribe_info = self::curl_req_get(self::$cancelSubscribedPlan . '/' . $currentSubscription->stripe_id, $key);
                 if ($get_subscribe_info['status'] == false) { // if something went wrong with the request
-                    Log::error("PaystackController::cancelSubscribedPlan() :\n".json_encode($get_subscribe_info));
+                    Log::error("PaystackController::cancelSubscribedPlan() :\n" . json_encode($get_subscribe_info));
 
-                    return back()->with(['message' => 'Paystack Gateway : '.json_encode($get_subscribe_info), 'type' => 'error']);
+                    return back()->with(['message' => 'Paystack Gateway : ' . json_encode($get_subscribe_info), 'type' => 'error']);
                 }
 
-                $request = self::curl_req(self::$subscription_endpoint.'/disable', $key, [
-                    'code' => $currentSubscription->stripe_id,
+                $request = self::curl_req(self::$subscription_endpoint . '/disable', $key, [
+                    'code'  => $currentSubscription->stripe_id,
                     'token' => $get_subscribe_info['data']['email_token'],
                 ]);
 
@@ -651,12 +656,11 @@ class PaystackService
     // tested
     public static function subscribeCancel()
     {
-        $user = Auth::user();
-        $userId = $user->id;
+        $user = auth()->user();
         // Get current active subscription
-        $activeSub = getCurrentActiveSubscription($userId);
+        $activeSub = getCurrentActiveSubscription($user->id);
         if ($activeSub != null) {
-            $plan = PaymentPlans::where('id', $activeSub->plan_id)->first();
+            $plan = Plan::where('id', $activeSub->plan_id)->first();
             $gateway = Gateways::where('code', 'paystack')->first();
             if ($gateway == null) {
                 abort(404);
@@ -667,29 +671,27 @@ class PaystackService
                 $key = $gateway->live_client_secret;
             }
             if ($activeSub->stripe_price != 'Not Needed') {
-                $reqs = self::curl_req_get(self::$subscription_endpoint.'/'.$activeSub->stripe_id, $key);
+                $reqs = self::curl_req_get(self::$subscription_endpoint . '/' . $activeSub->stripe_id, $key);
                 if ($reqs['status'] == false) { // if something went wrong with the request
                     abort(404, $reqs['message']);
                 }
                 $mailToken = $reqs['data']['email_token'];
-                $request = self::curl_req(self::$subscription_endpoint.'/disable', $key, [
-                    'code' => $activeSub->stripe_id,
+                $request = self::curl_req(self::$subscription_endpoint . '/disable', $key, [
+                    'code'  => $activeSub->stripe_id,
                     'token' => $mailToken,
                 ]);
                 if ($request['status'] == true && $request['message'] == 'Subscription disabled successfully') {
                     $activeSub->stripe_status = 'cancelled';
                     $activeSub->ends_at = \Carbon\Carbon::now();
                     $activeSub->save();
-                    $recent_words = $user->remaining_words - $plan->total_words;
-                    $recent_images = $user->remaining_images - $plan->total_images;
-                    $user->remaining_words = $recent_words < 0 ? 0 : $recent_words;
-                    $user->remaining_images = $recent_images < 0 ? 0 : $recent_images;
-                    $user->save();
+
+                    self::creditDecreaseCancelPlan($user, $plan);
+
                     CreateActivity::for($user, 'Cancelled', 'Subscription plan');
 
                     return back()->with(['message' => __('Your subscription is cancelled succesfully.'), 'type' => 'success']);
                 } else {
-                    Log::error('PaystackController::disableOldSubscriptionAndReturnNew(): '.$request['message']);
+                    Log::error('PaystackController::disableOldSubscriptionAndReturnNew(): ' . $request['message']);
 
                     return back()->with(['message' => __('Your subscription could not cancelled.'), 'type' => 'error']);
                 }
@@ -697,11 +699,9 @@ class PaystackService
                 $activeSub->stripe_status = 'cancelled';
                 $activeSub->ends_at = \Carbon\Carbon::now();
                 $activeSub->save();
-                $recent_words = $user->remaining_words - $plan->total_words;
-                $recent_images = $user->remaining_images - $plan->total_images;
-                $user->remaining_words = $recent_words < 0 ? 0 : $recent_words;
-                $user->remaining_images = $recent_images < 0 ? 0 : $recent_images;
-                $user->save();
+
+                self::creditDecreaseCancelPlan($user, $plan);
+
                 CreateActivity::for($user, 'Cancelled', 'Subscription plan');
 
                 return back()->with(['message' => __('Your subscription is cancelled succesfully.'), 'type' => 'success']);
@@ -745,11 +745,11 @@ class PaystackService
         //open connection
         $ch = curl_init();
         //set the url, number of POST vars, POST data
-        curl_setopt($ch, CURLOPT_URL, self::$client.$second_url);
+        curl_setopt($ch, CURLOPT_URL, self::$client . $second_url);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $fields_string);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Authorization: Bearer '.$key,
+            'Authorization: Bearer ' . $key,
             'Cache-Control: no-cache',
         ]);
         //So that curl_exec returns the contents of the cURL; rather than echoing it
@@ -760,7 +760,7 @@ class PaystackService
         if ($request) {
             $result = json_decode($request, true);
             if (isset($result['status']) && $result['status'] !== true) {
-                abort(400, 'Paystack: '.$result['message']);
+                abort(400, 'Paystack: ' . $result['message']);
             }
 
             return $result;
@@ -777,15 +777,15 @@ class PaystackService
     {
         $curl = curl_init();
         curl_setopt_array($curl, [
-            CURLOPT_URL => self::$client.$param,
+            CURLOPT_URL            => self::$client . $param,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => '',
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 30,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => 'GET',
-            CURLOPT_HTTPHEADER => [
-                'Authorization: Bearer '.$key,
+            CURLOPT_ENCODING       => '',
+            CURLOPT_MAXREDIRS      => 10,
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST  => 'GET',
+            CURLOPT_HTTPHEADER     => [
+                'Authorization: Bearer ' . $key,
                 'Cache-Control: no-cache',
             ],
         ]);
@@ -794,11 +794,11 @@ class PaystackService
         $err = curl_error($curl);
         curl_close($curl);
         if ($err) {
-            abort(400, 'Paystack: '.$err);
+            abort(400, 'Paystack: ' . $err);
         } else {
             $result = json_decode($response, true);
             if (isset($result['status']) && $result['status'] !== true) {
-                abort(400, 'Paystack: '.$result['message']);
+                abort(400, 'Paystack: ' . $result['message']);
             }
 
             return $result;
@@ -813,7 +813,7 @@ class PaystackService
     {
 
         //check if plan exists
-        $plan = PaymentPlans::where('id', $planId)->first();
+        $plan = Plan::where('id', $planId)->first();
         if ($plan != null) {
             $product = GatewayProducts::where(['plan_id' => $planId, 'gateway_code' => 'paystack'])->first();
             if ($product != null) {
@@ -834,7 +834,7 @@ class PaystackService
     {
 
         //check if plan exists
-        $plan = PaymentPlans::where('id', $planId)->first();
+        $plan = Plan::where('id', $planId)->first();
         if ($plan != null) {
             $product = GatewayProducts::where(['plan_id' => $planId, 'gateway_code' => 'paystack'])->first();
             if ($product != null) {
@@ -870,6 +870,7 @@ class PaystackService
     public static function updateUserData()
     {
         $key = self::getKey();
+
         try {
             $history = OldGatewayProducts::where(['gateway_code' => self::$GATEWAY_CODE, 'status' => 'check'])->get();
             if ($history != null) {
@@ -884,7 +885,7 @@ class PaystackService
                         ->get();
                     foreach ($subs ?? [] as $sub) {
                         $subscriptionId = $sub->stripe_id;
-                        $reqs = self::curl_req_get(self::$subscription_endpoint.'/'.$subscriptionId, $key);
+                        $reqs = self::curl_req_get(self::$subscription_endpoint . '/' . $subscriptionId, $key);
                         if ($reqs['status'] == false) { // if something went wrong with the request
                             abort(404);
                         }
@@ -894,7 +895,7 @@ class PaystackService
                         // cancel old subscription from gateway
                         $new_subscription_code = self::disableOldSubscriptionAndReturnNew($subscriptionId, $mailToken, $customerId, $planId);
                         if ($new_subscription_code == false) {
-                            Log::error('PaystackService::updateUserData(): Could not create new subscription for user: '.$sub->user_id);
+                            Log::error('PaystackService::updateUserData(): Could not create new subscription for user: ' . $sub->user_id);
 
                             continue;
                         }
@@ -905,8 +906,8 @@ class PaystackService
                     $record->save();
                 }
             }
-        } catch (\Exception $ex) {
-            Log::error(self::$GATEWAY_CODE."-> updateUserData():\n".$ex->getMessage());
+        } catch (Exception $ex) {
+            Log::error(self::$GATEWAY_CODE . "-> updateUserData():\n" . $ex->getMessage());
 
             return ['result' => Str::before($ex->getMessage(), ':')];
         }
@@ -917,25 +918,25 @@ class PaystackService
     public static function disableOldSubscriptionAndReturnNew($subscriptionId, $mail_token, $customerID, $planID)
     {
         $key = self::getKey();
-        $request = self::curl_req(self::$subscription_endpoint.'/disable', $key, [
-            'code' => $subscriptionId,
+        $request = self::curl_req(self::$subscription_endpoint . '/disable', $key, [
+            'code'  => $subscriptionId,
             'token' => $mail_token,
         ]);
         if ($request['status'] == true && $request['message'] == 'Subscription disabled successfully') {
             // create new subscription insted of old one
             $req = self::curl_req(self::$subscription_endpoint, $key, [
                 'customer' => $customerID,
-                'plan' => $planID,
+                'plan'     => $planID,
             ]);
             if ($req['status'] == false) {
-                Log::error('PaystackService::disableOldSubscriptionAndReturnNew(): '.$req['message']);
+                Log::error('PaystackService::disableOldSubscriptionAndReturnNew(): ' . $req['message']);
 
                 return false;
             }
 
             return $req['data']['subscription_code'];
         } else {
-            Log::error('PaystackService::disableOldSubscriptionAndReturnNew(): '.$request['message']);
+            Log::error('PaystackService::disableOldSubscriptionAndReturnNew(): ' . $request['message']);
 
             return false;
         }
@@ -950,32 +951,32 @@ class PaystackService
     public static function gatewayDefinitionArray(): array
     {
         return [
-            'code' => 'paystack',
-            'title' => 'Paystack',
-            'link' => 'https://paystack.com/',
-            'active' => 0,
-            'available' => 1,
-            'img' => '/assets/img/payments/paystack-2.svg',
-            'whiteLogo' => 0,
-            'mode' => 1,
-            'sandbox_client_id' => 1,
+            'code'                  => 'paystack',
+            'title'                 => 'Paystack',
+            'link'                  => 'https://paystack.com/',
+            'active'                => 0,
+            'available'             => 1,
+            'img'                   => '/assets/img/payments/paystack-2.svg',
+            'whiteLogo'             => 0,
+            'mode'                  => 1,
+            'sandbox_client_id'     => 1,
             'sandbox_client_secret' => 1,
-            'sandbox_app_id' => 0,
-            'live_client_id' => 1,
-            'live_client_secret' => 1,
-            'live_app_id' => 0,
-            'currency' => 1,
-            'currency_locale' => 0,
-            'notify_url' => 0,
-            'base_url' => 0,
-            'sandbox_url' => 0,
-            'locale' => 0,
-            'validate_ssl' => 0,
-            'webhook_secret' => 0,
-            'logger' => 0,
-            'tax' => 1,              // Option in settings
-            'bank_account_details' => 0,
-            'bank_account_other' => 0,
+            'sandbox_app_id'        => 0,
+            'live_client_id'        => 1,
+            'live_client_secret'    => 1,
+            'live_app_id'           => 0,
+            'currency'              => 1,
+            'currency_locale'       => 0,
+            'notify_url'            => 0,
+            'base_url'              => 0,
+            'sandbox_url'           => 0,
+            'locale'                => 0,
+            'validate_ssl'          => 0,
+            'webhook_secret'        => 0,
+            'logger'                => 0,
+            'tax'                   => 1,              // Option in settings
+            'bank_account_details'  => 0,
+            'bank_account_other'    => 0,
         ];
     }
 }

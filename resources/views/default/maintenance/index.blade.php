@@ -33,7 +33,7 @@
     />
     <meta
             name="description"
-            content="{{ getMetaDesc($setting) }}"
+            content="{{ getMetaDesc($setting, $settings_two) }}"
     >
     @if (isset($setting->meta_keywords))
         <meta
@@ -48,7 +48,7 @@
     >
 
     <title>
-        {{ getMetaTitle($setting) }}
+        {{ getMetaTitle($setting, $settings_two) }}
     </title>
 
     @if (filled($google_fonts_string))

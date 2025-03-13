@@ -1,19 +1,3 @@
-@php
-    $google_fonts_string = '';
-    $theme_google_fonts = Theme::getSetting('landingPage.googleFonts');
-    $app_js_path = 'resources/views/' . get_theme() . '/js/app.js';
-
-    $i = 0;
-    foreach ($theme_google_fonts as $font_name => $weights) {
-        $font_string = 'family=' . str_replace(' ', '+', $font_name);
-        if (!empty($weights)) {
-            $font_string .= ':wght@' . implode(';', $weights);
-        }
-        $google_fonts_string .= $font_string . ($i === count($theme_google_fonts) - 1 ? '' : '&');
-        $i++;
-    }
-@endphp
-
 <!DOCTYPE html>
 <html
     class="max-sm:overflow-x-hidden"
@@ -22,7 +6,6 @@
 >
 
 <head>
-
     <meta charset="UTF-8" />
     <meta
         http-equiv="X-UA-Compatible"
@@ -34,7 +17,7 @@
     />
     <meta
         name="description"
-        content="{{ getMetaDesc($setting) }}"
+        content="{{ getMetaDesc($setting, $settings_two) }}"
     >
     @if (isset($setting->meta_keywords))
         <meta
@@ -42,17 +25,13 @@
             content="{{ $setting->meta_keywords }}"
         >
     @endif
-
     <link
         rel="icon"
         href="{{ custom_theme_url($setting->favicon_path ?? 'assets/favicon.ico') }}"
     >
+    <title>{{ getMetaTitle($setting, $settings_two) }}</title>
 
-    <title>
-        {{ getMetaTitle($setting) }}
-    </title>
-
-    @if (filled($google_fonts_string))
+    @if (filled($google_fonts_string = \App\Helpers\Classes\ThemeHelper::googleFontsString()))
         <link
             rel="preconnect"
             href="https://fonts.googleapis.com"
@@ -116,7 +95,7 @@
     {{-- <script async src='https://r.wdfl.co/rw.js' data-rewardful='API_KEY'></script> --}}
     {{-- Rewordfull end --}}
 
-    @vite($app_js_path)
+    @vite(\App\Helpers\Classes\ThemeHelper::appJsPath())
 
     @stack('css')
 

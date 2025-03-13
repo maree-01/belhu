@@ -17,7 +17,12 @@
                     <div
                         class="line-numbers min-h-full resize [direction:ltr] [&_kbd]:inline-flex [&_kbd]:rounded [&_kbd]:bg-primary/10 [&_kbd]:px-1 [&_kbd]:py-0.5 [&_kbd]:font-semibold [&_kbd]:text-primary [&_pre[class*=language]]:my-4 [&_pre[class*=language]]:rounded"
                         id="code-pre"
-                    ><code id="code-output">{{ $workbook->output }}</code></div>
+                    >
+                        <div
+                            class="dark:prose-inverse prose"
+                            id="code-output"
+                        >{{ $workbook->output }}</div>
+                    </div>
                 </div>
             @elseif($workbook->generator->type === 'image')
                 <form

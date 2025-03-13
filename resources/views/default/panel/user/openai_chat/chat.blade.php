@@ -1,5 +1,6 @@
 @php
-    $disable_actions = $app_is_demo && (isset($category) && ($category->slug == 'ai_vision' || $category->slug == 'ai_pdf' || $category->slug == 'ai_chat_image'));
+	$isOtherCategories = isset($category) && ($category->slug == 'ai_vision' || $category->slug == 'ai_pdf' || $category->slug == 'ai_chat_image');
+    $disable_actions = $app_is_demo && $isOtherCategories;
 @endphp
 
 @extends('panel.layout.app', ['disable_tblr' => true])
@@ -20,6 +21,14 @@
     @elseif ($category->slug == 'ai_chat_image')
         {{ __('Seamlessly generate and craft a diverse array of images without ever leaving your chat environment.') }}
     @endif
+@endsection
+@section('titlebar_actions')
+	@includeWhen(! $isOtherCategories, 'components.select-ai-model-list')
+
+	<x-button href="{{ LaravelLocalization::localizeUrl(route('dashboard.user.openai.list')) }}">
+        <x-tabler-plus class="size-4" />
+        {{ __('New') }}
+    </x-button>
 @endsection
 
 @section('content')
@@ -42,25 +51,70 @@
         <div
             class="chats-wrap relative h-[calc(100vh-7rem)] md:grid md:h-[75vh] md:grid-flow-col md:[grid-template-columns:25%_75%]"
             id="user_chat_area"
-            x-data="{ mobileOptionsShow: false, toggleMobileOptions() { this.mobileOptionsShow = !this.mobileOptionsShow }, mobileSidebarShow: false, toggleMobileSidebar() { this.mobileSidebarShow = !this.mobileSidebarShow } }"
+            :class="{ 'chats-sidebar-hidden': $store.focusMode.active && sidebarHidden }"
+            x-data="{
+                mobileOptionsShow: false,
+                mobileSidebarShow: false,
+                sidebarHidden: false,
+                realtimeStatus: 'idle',
+                toggleMobileOptions() {
+                    this.mobileOptionsShow = !this.mobileOptionsShow
+                },
+                toggleMobileSidebar() {
+                    this.mobileSidebarShow = !this.mobileSidebarShow
+                },
+                toggleSidebarHidden() {
+                    this.sidebarHidden = !this.sidebarHidden
+                },
+                setRealtimeStatus(status) {
+                    this.realtimeStatus = status
+                }
+            }"
         >
-            @if (view()->hasSection('chat_sidebar'))
-                @yield('chat_sidebar')
-            @else
-                @include('panel.user.openai_chat.components.chat_sidebar')
-            @endif
+            <div
+                class="chats-sidebar-wrap relative flex h-[inherit] w-full transition-all max-md:absolute max-md:start-0 max-md:top-20 max-md:h-0 [&.active]:h-[calc(100%-80px)]"
+                :class="{ active: mobileSidebarShow, hidden: $store.focusMode.active && sidebarHidden }"
+            >
+                @if (view()->hasSection('chat_sidebar'))
+                    @yield('chat_sidebar')
+                @else
+                    @include('panel.user.openai_chat.components.chat_sidebar')
+                @endif
+            </div>
+
             <x-card
-                class="conversation-area-wrap flex h-[inherit] grow flex-col md:rounded-s-none lg:w-full"
+                class="conversation-area-wrap relative flex h-[inherit] grow flex-col md:rounded-s-none lg:w-full"
                 class:body="h-full rounded-b-[inherit] rounded-t-[inherit]"
                 id="load_chat_area_container"
                 size="none"
             >
+                <x-slot:head
+                    class="!border-none !p-0"
+                >
+                    <x-button
+                        class="chats-sidebar-expander absolute start-0 top-5 z-[99] hidden size-10 -translate-x-1/2 place-content-center rounded-full bg-background text-heading-foreground shadow-md shadow-heading-foreground/10 hover:translate-y-0 hover:scale-105 dark:bg-background lg:group-[&.focus-mode]/body:inline-grid"
+                        variant="ghost-shadow"
+                        size="none"
+                        href="#"
+                        @click.prevent="if ( $store.focusMode.active ) { toggleSidebarHidden() }"
+                    >
+                        <span
+                            class="inline-block transition-transform"
+                            :class="{ 'rotate-180': sidebarHidden }"
+                        >
+                            <x-tabler-chevron-left class="rtl:-scale-x-1 size-4" />
+                        </span>
+                    </x-button>
+                </x-slot:head>
+
                 @if ($chat != null)
                     @if (view()->hasSection('chat_area_container'))
                         @yield('chat_area_container')
                     @else
                         @include('panel.user.openai_chat.components.chat_area_container')
                     @endif
+                @else
+                    <div class="conversation-area flex h-[inherit] grow flex-col justify-between overflow-y-auto rounded-b-[inherit] rounded-t-[inherit] max-md:max-h-full"></div>
                 @endif
             </x-card>
         </div>
@@ -99,11 +153,10 @@
             </div>
         </div>
     </template>
-
     <template id="chat_user_bubble">
         <div class="lqd-chat-user-bubble mb-2 flex flex-row-reverse content-end gap-2 lg:ms-auto">
             <span
-                class="size-6 inline-block shrink-0 rounded-full bg-cover bg-center"
+                class="lqd-chat-avatar inline-block size-6 shrink-0 rounded-full bg-cover bg-center"
                 style="background-image: url({{ url(Auth::user()->avatar, true) }})"
             >
                 <span class="sr-only">
@@ -112,14 +165,18 @@
             </span>
             <div
                 class="chat-content-container group relative max-w-[calc(100%-64px)] rounded-[2em] bg-secondary text-secondary-foreground dark:bg-zinc-700 dark:text-primary-foreground">
-                <div class="chat-content px-6 py-3"></div>
-                <button
-                    class="lqd-clipboard-copy size-10 pointer-events-auto invisible absolute -start-5 bottom-0 inline-flex items-center justify-center rounded-full border-none bg-background text-foreground opacity-0 shadow-lg transition-all hover:-translate-y-0.5 hover:scale-110 group-hover:visible group-hover:opacity-100"
-                    data-copy-options='{ "content": ".chat-content", "contentIn": "<.chat-content-container" }'
-                    title="{{ __('Copy to clipboard') }}"
-                >
-                    <x-tabler-copy class="size-4" />
-                </button>
+                <div class="chat-content px-5 py-3.5"></div>
+                <div
+                    class="lqd-clipboard-copy-wrap group/copy-wrap pointer-events-auto invisible absolute -start-5 bottom-0 opacity-0 transition-all group-hover:!visible group-hover:!opacity-100">
+                    <button
+                        class="lqd-clipboard-copy inline-flex h-10 w-10 items-center justify-center rounded-full border-none bg-white p-0 text-black !shadow-lg transition-all hover:-translate-y-[2px] hover:scale-110"
+                        data-copy-options='{ "content": ".chat-content", "contentIn": "<.chat-content-container" }'
+                        title="{{ __('Copy to clipboard') }}"
+                    >
+                        <span class="sr-only">{{ __('Copy to clipboard') }}</span>
+                        <x-tabler-copy class="size-4" />
+                    </button>
+                </div>
             </div>
         </div>
     </template>
@@ -127,7 +184,7 @@
     <template id="chat_ai_bubble">
         <div class="lqd-chat-ai-bubble group mb-2 flex content-start gap-2">
             <span
-                class="size-6 inline-block shrink-0 rounded-full bg-cover bg-center"
+                class="lqd-chat-avatar inline-block size-6 shrink-0 rounded-full bg-cover bg-center"
                 style="background-image: url('{{ !empty($chat->category->image) ? custom_theme_url($chat->category->image, true) : url(custom_theme_url('/assets/img/auth/default-avatar.png')) }}')"
             >
                 <span class="sr-only">
@@ -135,27 +192,31 @@
                 </span>
             </span>
             <div
-                class="chat-content-container min-h-11 relative max-w-[calc(100%-64px)] rounded-3xl text-heading-foreground before:absolute before:inset-0 before:inline-block before:rounded-3xl before:bg-clay group-[&.loading]:before:animate-pulse-intense dark:text-heading-foreground dark:before:bg-white/[2%]">
-                <div class="lqd-typing relative inline-flex items-center gap-3 rounded-full px-3 py-2 font-medium leading-none">
+                class="chat-content-container relative min-h-11 max-w-[calc(100%-64px)] rounded-3xl text-heading-foreground before:absolute before:inset-0 before:inline-block before:rounded-3xl before:bg-clay group-[&.loading]:before:animate-pulse-intense dark:text-heading-foreground dark:before:bg-white/[2%]">
+                <div class="lqd-typing relative inline-flex items-center gap-3 rounded-full px-5 py-3.5 font-medium leading-none">
                     <div class="lqd-typing-dots flex h-5 items-center gap-1">
-                        <span class="lqd-typing-dot size-1 inline-block rounded-full bg-current opacity-40 ![animation-delay:0.2s]"></span>
-                        <span class="lqd-typing-dot size-1 inline-block rounded-full bg-current opacity-60 ![animation-delay:0.3s]"></span>
-                        <span class="lqd-typing-dot size-1 inline-block rounded-full bg-current opacity-80 ![animation-delay:0.4s]"></span>
+                        <span class="lqd-typing-dot inline-block size-1 rounded-full bg-current opacity-40 ![animation-delay:0.2s]"></span>
+                        <span class="lqd-typing-dot inline-block size-1 rounded-full bg-current opacity-60 ![animation-delay:0.3s]"></span>
+                        <span class="lqd-typing-dot inline-block size-1 rounded-full bg-current opacity-80 ![animation-delay:0.4s]"></span>
                     </div>
                 </div>
                 <div class="inline-flex max-w-full items-center rounded-full font-medium leading-none">
                     @if ($category->slug == 'ai_chat_image')
                         <div class="loader_image loader_image_bubble lqd-typing lqd-typing-loader relative"></div>
                     @endif
-                    <pre
-                        class="chat-content prose relative w-full max-w-none whitespace-pre-wrap px-6 py-3 indent-0 font-[inherit] text-xs font-normal text-current [word-break:break-word] empty:hidden [&_*]:text-current"></pre>
-                    <button
-                        class="lqd-clipboard-copy size-10 pointer-events-auto invisible absolute -end-5 bottom-0 inline-flex items-center justify-center rounded-full border-none bg-background text-foreground opacity-0 shadow-lg transition-all hover:-translate-y-0.5 hover:scale-110 group-hover:visible group-hover:opacity-100"
-                        data-copy-options='{ "content": ".chat-content", "contentIn": "<.chat-content-container" }'
-                        title="{{ __('Copy to clipboard') }}"
-                    >
-                        <x-tabler-copy class="size-4" />
-                    </button>
+                    <div
+                        class="chat-content prose relative w-full max-w-none px-5 py-3.5 indent-0 font-[inherit] text-xs font-normal text-current [word-break:break-word] empty:hidden [&_*]:text-current">
+                    </div>
+                    <div
+                        class="lqd-clipboard-copy-wrap group/copy-wrap pointer-events-auto invisible absolute -end-5 bottom-0 opacity-0 transition-all group-hover:!visible group-hover:!opacity-100">
+                        <button
+                            class="lqd-clipboard-copy inline-flex h-10 w-10 items-center justify-center rounded-full border-none bg-white p-0 text-black !shadow-lg transition-all hover:-translate-y-[2px] hover:scale-110"
+                            data-copy-options='{ "content": ".chat-content", "contentIn": "<.chat-content-container" }'
+                            title="{{ __('Copy to clipboard') }}"
+                        >
+                            <x-tabler-copy class="size-4" />
+                        </button>
+                    </div>
                 </div>
             </div>
     </template>
@@ -163,7 +224,7 @@
     <template id="prompt_image">
         <div class="relative">
             <button
-                class="prompt_image_close size-5 absolute -end-2 -top-2 flex items-center justify-center rounded-full bg-red-600 text-white"
+                class="prompt_image_close absolute -end-2 -top-2 flex size-5 items-center justify-center rounded-full bg-red-600 text-white"
                 onclick="document.getElementById('mainupscale_src').style.display = 'block';"
             >
                 <x-tabler-x class="size-4" />
@@ -178,7 +239,7 @@
     <template id="prompt_pdf">
         <div class="relative m-2 flex h-[80px] items-end rounded-[10px]">
             <button
-                class="prompt_pdf_close size-5 absolute -end-2 -top-2 flex items-center justify-center rounded-full bg-red-600 text-white"
+                class="prompt_pdf_close absolute -end-2 -top-2 flex size-5 items-center justify-center rounded-full bg-red-600 text-white"
                 onclick="document.getElementById('mainupscale_src').style.display = 'block';"
             >
                 <x-tabler-x class="size-4" />
@@ -189,7 +250,8 @@
 
     <template id="prompt_image_add_btn">
         <div class="promt_image_btn">
-            <button class="aspect-square w-full rounded-xl bg-foreground/10 text-2xl font-light transition-all hover:bg-emerald-500 hover:text-white">+</button>
+            <button class="aspect-square w-full rounded-xl bg-foreground/10 text-2xl font-light transition-all hover:bg-emerald-500 hover:text-white">+
+            </button>
         </div>
     </template>
 
@@ -274,6 +336,11 @@
     </template>
 
     <input
+        id="assistant"
+        type="hidden"
+        value="{{ $category->assistant }}"
+    />
+    <input
         id="guest_id"
         type="hidden"
         value="{{ $apiUrl }}"
@@ -326,5 +393,7 @@
     <script src="{{ custom_theme_url('/assets/libs/prism/prism.js') }}"></script>
     <script src="{{ custom_theme_url('/assets/libs/markdown-it.min.js') }}"></script>
     <script src="{{ custom_theme_url('/assets/libs/html2pdf/html2pdf.bundle.min.js') }}"></script>
+    <script src="{{ custom_theme_url('/assets/libs/underscore/underscore-observe.js') }}"></script>
+    <script src="{{ custom_theme_url('/assets/libs/turndown.js') }}"></script>
     @include('panel.user.openai_chat.components.chat_js')
 @endpush

@@ -91,7 +91,8 @@
 	@media (max-width: 479px) {
 
 		:root {
-			--h1-font-size: 16vw;
+			--h1-font-size: 14vw;
+			--h1-line-height: 1.15em;
 		}
 
 		h1 svg {

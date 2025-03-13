@@ -219,7 +219,7 @@
                                 class="w-full"
                                 size="lg"
                                 :disabled="$is_license"
-                                href="{{ route('dashboard.admin.marketplace.buyextesion', ['slug' => $item['slug']]) }}"
+                                href="{{ $item['routes']['payment'] }}"
                         >
                             {{ __('Buy Now') }}
                         </x-button>

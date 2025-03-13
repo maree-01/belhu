@@ -34,6 +34,8 @@
     if (!$attributes->get('layout-wide')) {
         $container_base_class .= ' container';
     } else {
+        $container_base_class .= ' container-fluid';
+
         if (!empty($wide_container_px)) {
             $container_base_class .= ' ' . $wide_container_px;
         }
@@ -118,7 +120,9 @@
             @endif
 
             @if (view()->hasSection('titlebar_actions'))
-                @yield('titlebar_actions')
+                <div {{ $attributes->twMergeFor('actions', $actions_base_class) }}>
+                    @yield('titlebar_actions')
+                </div>
             @elseif (!empty($actions))
                 <div {{ $attributes->twMergeFor('actions', $actions_base_class, $actions->attributes->get('class')) }}>
                     {{ $actions }}

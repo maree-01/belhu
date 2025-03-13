@@ -13,13 +13,13 @@
 @endphp
 
 <div
-    class="notifications-wrap group"
+    class="notifications-wrap group hidden md:flex"
     x-data="notifications({{ json_encode($notifications) }})"
     x-init="$store.notifications.setNotifications(notifications)"
     :class="{ 'has-unread': $store.notifications.hasUnread() }"
 >
     <x-dropdown.dropdown
-        class="notifications-dropdown hidden md:flex"
+        class="notifications-dropdown"
         anchor="end"
         offsetY="26px"
     >

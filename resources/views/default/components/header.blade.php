@@ -2,6 +2,7 @@
     <div @class([
         'lqd-header-container flex w-full grow gap-2 px-4 max-lg:w-full max-lg:max-w-none',
         'container' => !$attributes->get('layout-wide'),
+        'container-fluid' => $attributes->get('layout-wide'),
         Theme::getSetting('wideLayoutPaddingX', '') =>
             filled(Theme::getSetting('wideLayoutPaddingX', '')) &&
             $attributes->get('layout-wide'),
@@ -18,38 +19,7 @@
             >
                 <span class="lqd-mobile-nav-toggle-icon relative h-[2px] w-5 rounded-xl bg-current"></span>
             </button>
-            <a
-                class="flex shrink-0 items-center justify-center max-md:max-w-[120px] lg:hidden lg:px-2"
-                href="{{ LaravelLocalization::localizeUrl(route('dashboard.index')) }}"
-            >
-                @if (isset($setting->logo_dashboard))
-                    <img
-                        class="dark:hidden"
-                        src="{{ custom_theme_url($setting->logo_dashboard_path, true) }}"
-                        @if (isset($setting->logo_dashboard_2x_path)) srcset="/{{ $setting->logo_dashboard_2x_path }} 2x" @endif
-                        alt="{{ $setting->site_name }}"
-                    >
-                    <img
-                        class="hidden dark:block"
-                        src="{{ custom_theme_url($setting->logo_dashboard_dark_path, true) }}"
-                        @if (isset($setting->logo_dashboard_dark_2x_path)) srcset="/{{ $setting->logo_dashboard_dark_2x_path }} 2x" @endif
-                        alt="{{ $setting->site_name }}"
-                    >
-                @else
-                    <img
-                        class="dark:hidden"
-                        src="{{ custom_theme_url($setting->logo_path, true) }}"
-                        @if (isset($setting->logo_2x_path)) srcset="/{{ $setting->logo_2x_path }} 2x" @endif
-                        alt="{{ $setting->site_name }}"
-                    >
-                    <img
-                        class="hidden dark:block"
-                        src="{{ custom_theme_url($setting->logo_dark_path, true) }}"
-                        @if (isset($setting->logo_dark_2x_path)) srcset="/{{ $setting->logo_dark_2x_path }} 2x" @endif
-                        alt="{{ $setting->site_name }}"
-                    >
-                @endif
-            </a>
+            <x-header-logo />
         </div>
 
         {{-- Title slot --}}
@@ -60,6 +30,8 @@
                 </h1>
             </div>
         @endif
+
+        @includeFirst(['focus-mode::header', 'components.includes.ai-tools', 'vendor.empty'])
 
         {{-- Search form --}}
         <div class="header-search-container flex items-center peer-[&.header-title-container]/title:grow peer-[&.header-title-container]/title:justify-center">
@@ -73,7 +45,7 @@
                 {{ $actions }}
             @else
                 <div class="flex items-center max-xl:gap-2 max-lg:hidden xl:gap-3">
-                    @if (Auth::user()->type == 'admin')
+                    @if (Auth::user()->isAdmin())
                         <x-button
                             href="{{ route('dashboard.admin.index') }}"
                             variant="ghost-shadow"
@@ -83,13 +55,13 @@
                     @endif
 
                     @if ($settings_two->liquid_license_type == 'Extended License')
-                        @if (getSubscriptionStatus())
+                        @if ($subscription = getSubscription())
                             <x-button
                                 class="max-xl:hidden"
                                 href="{{ route('dashboard.user.payment.subscription') }}"
                                 variant="ghost-shadow"
                             >
-                                {{ getSubscriptionName() }} - {{ getSubscriptionDaysLeft() }}
+                                {{ $subscription?->plan?->name }} -  {{ getSubscriptionDaysLeft() }}
                                 {{ __('Days Left') }}
                             </x-button>
                         @else
@@ -120,6 +92,8 @@
                 @if (Theme::getSetting('dashboard.supportedColorSchemes') === 'all')
                     <x-light-dark-switch />
                 @endif
+
+                @includeFirst(['focus-mode::ai-tools-button', 'components.includes.ai-tools-button', 'vendor.empty'])
 
                 @if (setting('notification_active', 0))
                     {{-- Notifications --}}

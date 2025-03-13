@@ -32,23 +32,10 @@ function prepaidSave( plan_id ) {
 	formData.append( 'is_featured', $( "#is_featured" ).val() );
 	formData.append( 'is_team_plan', $( "#is_team_plan" ).val() );
 	formData.append( 'plan_allow_seat', $( "#plan_allow_seat" ).val() );
-	formData.append( 'total_words', $( "#total_words" ).val() );
-	formData.append( 'total_images', $( "#total_images" ).val() );
 	formData.append( 'plan_type', $( "#plan_type" ).val() );
 	formData.append( 'features', $( "#features" ).val() );
 	formData.append( 'description', $( "#description" ).val() );
 
-	if(document.getElementById("display_word").checked){
-		formData.append( 'display_word', 1 );
-	}else{
-		formData.append( 'display_word', 0 );
-	}
-
-	if(document.getElementById("display_img").checked){
-		formData.append( 'display_img', 1 );
-	}else{
-		formData.append( 'display_img', 0 );
-	}
 
 	formData.append( 'type', 'prepaid' );
 
@@ -114,8 +101,6 @@ function subscriptionSave( plan_id ) {
 	formData.append( 'is_team_plan', $( "#is_team_plan" ).val() );
 	formData.append( 'plan_allow_seat', $( "#plan_allow_seat" ).val() );
 	// formData.append( 'stripe_product_id', $( "#stripe_product_id" ).val() );
-	formData.append( 'total_words', $( "#total_words" ).val() );
-	formData.append( 'total_images', $( "#total_images" ).val() );
 	formData.append( 'ai_name', $( "#ai_name" ).val() );
 	// formData.append( 'max_tokens', $( "#max_tokens" ).val() );
 	formData.append( 'can_create_ai_images', $( "#can_create_ai_images" ).val() );
@@ -124,18 +109,6 @@ function subscriptionSave( plan_id ) {
 	formData.append( 'trial_days', parseInt($( "#trial_days" ).val()) );
 	// description
 	formData.append( 'description', $( "#description" ).val() );
-
-	if(document.getElementById("display_word").checked){
-		formData.append( 'display_word', 1 );
-	}else{
-		formData.append( 'display_word', 0 );
-	}
-
-	if(document.getElementById("display_img").checked){
-		formData.append( 'display_img', 1 );
-	}else{
-		formData.append( 'display_img', 0 );
-	}
 
 
 	formData.append( 'type', 'subscription' );

@@ -5,7 +5,7 @@
 @section('settings')
     <form
         @if ($app_is_demo) @else action="{{ route('dashboard.admin.users.store') }}" @endif
-        method="POST"
+    method="POST"
         enctype="multipart/form-data"
     >
         @csrf
@@ -140,8 +140,11 @@
                                 id="type"
                                 name="type"
                             >
-                                <option value="user">{{ __('User') }}</option>
-                                <option value="admin">{{ __('Admin') }}</option>
+                                @foreach(\App\Enums\Roles::cases() as $role)
+                                    <option value="{{ $role->value }}">
+                                        {{ $role->label() }}
+                                    </option>
+                                @endforeach
                             </select>
                         </div>
                     </div>
@@ -159,29 +162,31 @@
                         </div>
                     </div>
                 </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label">{{ __('Remaining Words') }}</label>
-                            <input
-                                class="form-control"
-                                id="remaining_words"
-                                type="number"
-                                name="remaining_words"
-                                value="{{ old('remaining_words') }}"
-                            />
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label">{{ __('Remaining Images') }}</label>
-                            <input
-                                class="form-control"
-                                id="remaining_images"
-                                type="number"
-                                name="remaining_images"
-                                value="{{ old('remaining_images') }}"
-                            />
+                <div class="mb-3">
+                    <div class="accordion " id="accordionExample">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingOne">
+                                <button
+                                    class="accordion-button form-control"
+                                    type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#collapseOne"
+                                    aria-expanded="true"
+                                    aria-controls="collapseOne"
+                                >
+                                    {{ __('Credits') }}
+                                </button>
+                            </h2>
+                            <div
+                                id="collapseOne"
+                                class="accordion-collapse collapse show"
+                                aria-labelledby="headingOne"
+                                data-bs-parent="#accordionExample"
+                            >
+                                <div class="accordion-body">
+                                    @livewire('assign-view-credits', ['entities' => \App\Models\User::getFreshCredits()])
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

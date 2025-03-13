@@ -92,6 +92,50 @@
         @endif
     </div>
 
+    <div
+        class="lqd-audio-vis-wrap group/audio-vis pointer-events-none invisible absolute start-0 top-0 flex h-full w-full flex-col items-center justify-between gap-y-5 overflow-hidden px-5 py-32 opacity-0 backdrop-blur-[8px] transition-all [&.active]:visible [&.active]:opacity-100"
+        data-state="idle"
+    >
+        <div>
+        </div>
+        <div
+            class="invisible grid w-full scale-110 place-content-center place-items-center opacity-0 blur-lg transition-all duration-300 group-[&.active]/audio-vis:visible group-[&.active]/audio-vis:scale-100 group-[&.active]/audio-vis:opacity-100 group-[&.active]/audio-vis:blur-0">
+            <div class="lqd-audio-vis-circ col-start-1 col-end-1 row-start-1 row-end-1">
+                <div class="lg:size-[200px] size-40 inline-flex animate-spin rounded-full bg-gradient-to-b from-[#C13CFF] to-[#00BFFF] opacity-50 blur-3xl [animation-duration:2s]">
+                </div>
+            </div>
+            <div
+                class="lqd-audio-vis-bars col-start-1 col-end-1 row-start-1 row-end-1 flex h-8 scale-75 items-center gap-[3px] text-heading-foreground opacity-0 transition-all group-[&[data-state=playing]]/audio-vis:scale-100 group-[&[data-state=playing]]/audio-vis:opacity-100">
+                <div class="lqd-audio-vis-bar inline-flex min-h-[7px] w-[7px] origin-center rounded-full bg-current"></div>
+                <div class="lqd-audio-vis-bar inline-flex min-h-[7px] w-[7px] origin-center rounded-full bg-current"></div>
+                <div class="lqd-audio-vis-bar inline-flex min-h-[7px] w-[7px] origin-center rounded-full bg-current"></div>
+                <div class="lqd-audio-vis-bar inline-flex min-h-[7px] w-[7px] origin-center rounded-full bg-current"></div>
+                <div class="lqd-audio-vis-bar inline-flex min-h-[7px] w-[7px] origin-center rounded-full bg-current"></div>
+            </div>
+            <div
+                class="lqd-audio-vis-dot-wrap col-start-1 col-end-1 row-start-1 row-end-1 flex scale-75 animate-bounce items-center gap-[3px] text-heading-foreground opacity-0 transition-all group-[&[data-state=idle]]/audio-vis:scale-100 group-[&[data-state=recording]]/audio-vis:scale-100 group-[&[data-state=idle]]/audio-vis:opacity-100 group-[&[data-state=recording]]/audio-vis:opacity-100 group-[&[data-state=recording]]/audio-vis:[animation-play-state:paused]">
+                <div class="lqd-audio-vis-dot size-4 inline-flex origin-center rounded-full bg-current">
+                </div>
+            </div>
+            <div
+                class="lqd-audio-vis-loader active col-start-1 col-end-1 row-start-1 row-end-1 flex scale-75 items-center text-heading-foreground opacity-0 transition-all group-[&[data-state=waiting]]/audio-vis:scale-100 group-[&[data-state=waiting]]/audio-vis:opacity-100">
+                <x-tabler-loader-2 class="size-4 animate-spin" />
+            </div>
+        </div>
+        <x-button
+            class="size-[50px] pointer-events-auto shrink-0 border border-heading-foreground/5 bg-transparent backdrop-blur-md backdrop-contrast-125 hover:bg-red-500 hover:text-white"
+            variant="ghost-shadow"
+            size="none"
+            @click.prevent="$dispatch('audio-vis', { action: 'stop' })"
+            x-data="{}"
+        >
+            <span class="sr-only">
+                {{ __('Stop') }}
+            </span>
+            <x-tabler-x class="size-4" />
+        </x-button>
+    </div>
+
     @if (view()->hasSection('chat_form'))
         @yield('chat_form')
     @else

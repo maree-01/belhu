@@ -48,25 +48,46 @@
 
 @push('script')
     <script src="{{ custom_theme_url('/assets/js/panel/marketplace.js') }}"></script>
-    <script src="https://js.stripe.com/v3/"></script>
 
-    <script>
-        // This is your test publishable API key.
-        const stripe = Stripe("{{ $data['stripeKey'] }}");
+    @if(data_get($data, 'provider') == 'paypal')
+        <script src="https://www.paypal.com/sdk/js?client-id={{ $data['client_id'] }}&currency=USD"></script>
 
-        initialize();
+        <script>
+            // Render the PayPal button into #paypal-button-container
+            paypal.Buttons({
+                // Call your server to set up the transaction
+                createOrder: function(data, actions) {
+                    return '{{ $data['order']['id'] }}';
+                },
+                // Call your server to finalize the transaction
+                onApprove: function(data, actions) {
+                    // Simulate a mouse click:
+                    window.location.href = '{{ $data['approveUrl'] }}';
+                }
+            }).render('#checkout');
+        </script>
+    @else
+        <script src="https://js.stripe.com/v3/"></script>
 
-        // Create a Checkout Session as soon as the page loads
-        async function initialize() {
+        <script>
+            // This is your test publishable API key.
+            const stripe = Stripe("{{ $data['stripeKey'] }}");
 
-            const clientSecret ='{{ $data['stripe']['client_secret'] }}';
+            initialize();
 
-            const checkout = await stripe.initEmbeddedCheckout({
-                clientSecret,
-            });
+            // Create a Checkout Session as soon as the page loads
+            async function initialize() {
 
-            // Mount Checkout
-            checkout.mount('#checkout');
-        }
-    </script>
+                const clientSecret ='{{ $data['stripe']['client_secret'] }}';
+
+                const checkout = await stripe.initEmbeddedCheckout({
+                    clientSecret,
+                });
+
+                // Mount Checkout
+                checkout.mount('#checkout');
+            }
+        </script>
+
+    @endif
 @endpush

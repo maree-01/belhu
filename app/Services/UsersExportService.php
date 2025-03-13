@@ -2,10 +2,11 @@
 
 namespace App\Services;
 
-use App\Models\User;
+use App\Domains\Entity\EntityStats;
 use Illuminate\Support\Facades\Response;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class UsersExportService
 {
@@ -15,12 +16,13 @@ class UsersExportService
         $html = view('panel.admin.users.components.users-table', compact('users'))->render();
         $pdf = app('dompdf.wrapper');
         $pdf->loadHTML($html);
+
         return $pdf->download('users.pdf');
     }
 
-    public function exportAsExcel($users)
+    public function exportAsExcel($users): BinaryFileResponse
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
 
         $sheet->setCellValue('A1', 'NAME');
@@ -33,11 +35,15 @@ class UsersExportService
 
         $row = 2;
         foreach ($users as $user) {
-            $status = $user->status == 1 ? 'Active' : 'Inactive';
+            $status = $user->status === 1 ? 'Active' : 'Inactive';
+
+            $words = EntityStats::word()->forUser($user)->totalCredits();
+            $images = EntityStats::image()->forUser($user)->totalCredits();
+
             $sheet->setCellValue('A' . $row, $user->fullName());
-            $sheet->setCellValue('B' . $row, $user->type);
-            $sheet->setCellValue('C' . $row, $user->remaining_words);
-            $sheet->setCellValue('D' . $row, $user->remaining_images);
+            $sheet->setCellValue('B' . $row, $user->type->value);
+            $sheet->setCellValue('C' . $row, $words);
+            $sheet->setCellValue('D' . $row, $images);
             $sheet->setCellValue('E' . $row, $user->country);
             $sheet->setCellValue('F' . $row, $status);
             $sheet->setCellValue('G' . $row, $user->created_at);
@@ -58,20 +64,23 @@ class UsersExportService
         $fileName = 'users.csv';
 
         $headers = [
-            'Content-Type' => 'text/csv',
+            'Content-Type'        => 'text/csv',
             'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
         ];
 
         return Response::make($csv, 200, $headers);
     }
 
-    private function generateCsvContent($users)
+    private function generateCsvContent($users): string
     {
         $csv = "Name,Type,Remaining Words,Remaining Images,Country,Status,Created At\n";
 
         foreach ($users as $user) {
-            $status = $user->status == 1 ? 'Active' : 'Inactive';
-            $csv .= "{$user->fullName()},{$user->type},{$user->remaining_words},{$user->remaining_images},{$user->country},{$status},{$user->created_at}\n";
+            $status = $user->status === 1 ? 'Active' : 'Inactive';
+
+            $words = EntityStats::word()->forUser($user)->totalCredits();
+            $images = EntityStats::image()->forUser($user)->totalCredits();
+            $csv .= "{$user->fullName()},{$user->type->value},{$words},{$images},{$user->country},{$status},{$user->created_at}\n";
         }
 
         return $csv;

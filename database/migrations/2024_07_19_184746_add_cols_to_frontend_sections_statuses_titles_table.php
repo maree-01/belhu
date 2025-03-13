@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('frontend_sections_statuses_titles', function (Blueprint $table) {
-			$table->text('marquee_items')->nullable();
+            $table->text('marquee_items')->nullable();
         });
     }
 

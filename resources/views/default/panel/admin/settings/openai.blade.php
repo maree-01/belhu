@@ -1,6 +1,9 @@
+@use(\App\Domains\Entity\Enums\EntityEnum)
 @extends('panel.layout.settings', ['layout' => 'wide'])
 @section('title', __('Openai Settings'))
 @section('titlebar_actions', '')
+@section('titlebar_subtitle', __('This API key is used for all AI-powered features, including AI Chat, Image Generation, and Content Writing'))
+
 @section('additional_css')
     <link
         href="{{ custom_theme_url('/assets/libs/select2/select2.min.css') }}"
@@ -19,7 +22,6 @@
     >
         <h3 class="mb-[25px] text-[20px]">{{ __('OpenAI Settings') }}</h3>
         <div class="row">
-            <!-- TODO OPENAI API KEY -->
             @if ($app_is_demo)
                 <div class="col-md-12">
                     <div class="mb-3">
@@ -27,7 +29,7 @@
                             class="w-full"
                             size="sm"
                         >
-                            <label class="form-label">{{ __('OpenAi API Secret') }}</label>
+                            <label class="form-label">{{ __('OpenAI API Secret') }}</label>
                             <input
                                 class="form-control"
                                 id="openai_api_secret"
@@ -47,7 +49,7 @@
                         >
                             <div
                                 class="form-control mb-3 border-none p-0 [&_.select2-selection--multiple]:!rounded-[--tblr-border-radius] [&_.select2-selection--multiple]:!border-[--tblr-border-color] [&_.select2-selection--multiple]:!p-[1em_1.23em]">
-                                <label class="form-label">{{ __('OpenAi API Secret') }}</label>
+                                <label class="form-label">{{ __('OpenAI API Secret') }}</label>
 
                                 <select
                                     class="form-control select2"
@@ -91,113 +93,38 @@
                         class="w-full"
                         size="sm"
                     >
-                        <label class="form-label">{{ __('Default Dall-E Model') }}</label>
-                        <select
-                            class="form-select"
-                            id="dalle_default_model"
-                            name="dalle_default_model"
-                        >
-                            <option
-                                value="dalle2"
-                                {{ $settings_two->dalle == 'dalle2' ? 'selected' : null }}
-                            >
-                                {{ __('Dall-E-2') }}</option>
-                            <option
-                                value="dalle3"
-                                {{ $settings_two->dalle == 'dalle3' ? 'selected' : null }}
-                            >
-                                {{ __('Dall-E-3') }}</option>
-                        </select>
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <x-forms.input
+                                    class:container="mb-2"
+                                    id="dalle_hidden"
+                                    type="checkbox"
+                                    name="dalle_hidden"
+                                    :checked="setting('dalle_hidden') == 1"
+                                    label="{{ __('Hide Dall-E from AI Image') }}"
+                                    switcher
+                                />
+                            </div>
+                        </div>
+						@php
+							$openaiImageDrivers = \App\Domains\Entity\EntityStats::image()
+								->filterByEngine(\App\Domains\Engine\Enums\EngineEnum::OPEN_AI)
+								->list();
+							$current_dall_e_model = EntityEnum::fromSlug($settings_two->dalle ?? EntityEnum::DALL_E_2->slug())->slug();
+						@endphp
+						<x-model-select-list-with-change-alert :listLabel="'OpenAI Default Dall-E Model'" :listId="'dalle_default_model'" currentModel="{{ $current_dall_e_model }}" :drivers="$openaiImageDrivers" />
                     </x-card>
                 </div>
             </div>
             <div class="col-md-12">
-                <div class="mb-3">
-                    <x-card
-                        class="w-full"
-                        size="sm"
-                    >
-                        <label class="form-label">{{ __('Default Openai Model') }}</label>
-                        <select
-                            class="form-select"
-                            id="openai_default_model"
-                            name="openai_default_model"
-                        >
-                            <!--
-                                                                                                                                                                                                                                      <option value="text-ada-001" {{ $setting->openai_default_model == 'text-ada-001' ? 'selected' : null }}>{{ __('Ada (Cheapest &amp; Fastest)') }}</option>
-                                                                                                                                                                                                                                      <option value="text-babbage-001" {{ $setting->openai_default_model == 'text-babbage-001' ? 'selected' : null }}>{{ __('Babbage') }}</option>
-                                                                                                                                                                                                                                      <option value="text-curie-001" {{ $setting->openai_default_model == 'text-curie-001' ? 'selected' : null }}>{{ __('Curie') }}</option>
-                                                                                                                                                                                                                                      -->
-                            <option
-                                value="davinci-002"
-                                {{ $setting->openai_default_model == 'davinci-002' ? 'selected' : null }}
-                            >
-                                {{ __('Davinci (Expensive &amp; Capable)') }}</option>
-                            <option
-                                value="gpt-3.5-turbo-16k"
-                                {{ $setting->openai_default_model == 'gpt-3.5-turbo-16k' ? 'selected' : null }}
-                            >
-                                {{ __('ChatGTP (3.5-turbo-16k)') }}</option>
-                            <option
-                                value="gpt-3.5-turbo"
-                                {{ $setting->openai_default_model == 'gpt-3.5-turbo' ? 'selected' : null }}
-                            >
-                                {{ __('ChatGPT (Most Expensive & Fastest & Most Capable)') }}</option>
+                @php
+					$openaiWordDrivers = \App\Domains\Entity\EntityStats::word()
+						->filterByEngine(\App\Domains\Engine\Enums\EngineEnum::OPEN_AI)
+						->list();
 
-                            <option
-                                value="gpt-3.5-turbo-0125"
-                                {{ $setting->openai_default_model == 'gpt-3.5-turbo-0125' ? 'selected' : null }}
-                            >
-                                {{ __('ChatGTP (Updated Knowleddge cutoff of Sep 2021, 16k)') }}</option>
-                            <option
-                                value="gpt-4"
-                                {{ $setting->openai_default_model == 'gpt-4' ? 'selected' : null }}
-                            >
-                                {{ __('ChatGPT-4 (Most Expensive & Fastest & Most Capable)') }}</option>
-
-                            <option
-                                value="gpt-4-1106-preview"
-                                {{ $setting->openai_default_model == 'gpt-4-1106-preview' ? 'selected' : null }}
-                            >
-                                {{ __('GPT-4 Turbo (Updated Knowleddge cutoff of April 2023, 128k)') }}
-                            </option>
-                            <option
-                                value="gpt-4-0125-preview"
-                                {{ $setting->openai_default_model == 'gpt-4-0125-preview' ? 'selected' : null }}
-                            >
-                                {{ __('GPT-4 Turbo (Updated Knowleddge cutoff of Dec 2023, 128k)') }}
-                            </option>
-                            <option
-                                value="gpt-4-turbo"
-                                {{ $setting->openai_default_model == 'gpt-4-turbo' ? 'selected' : null }}
-                            >
-                                {{ __('GPT-4 Turbo with Vision (Updated Knowleddge cutoff of Dec 2023, 128k)') }}
-                            </option>
-                            <option
-                                value="gpt-4o"
-                                @selected($setting->openai_default_model == 'gpt-4o')
-                            >
-                                {{ __('GPT-4o Most advanced, multimodal flagship model that’s cheaper and faster than GPT-4 Turbo.  (Updated Knowleddge cutoff of Oct 2023, 128k)') }}
-                            </option>
-                            <option
-                                value="gpt-4o-mini"
-                                @selected($setting->openai_default_model == 'gpt-4o-mini')
-                            >
-                                {{ __('Gpt-4o-mini Our affordable and intelligent small model for fast, lightweight tasks. GPT-4o mini is cheaper and more capable than GPT-3.5 Turbo.') }}
-                            </option>
-                            {{-- <option value="gpt-4-vision-preview" {{$setting->openai_default_model == 'gpt-4-vision-preview' ? 'selected' : null}}>{{__('GPT-4 Turbo with vision (Understand images, in addition to all other GPT-4 Turbo capabilites)')}}</option> --}}
-                            @php App\Http\Controllers\AIFineTuneController::getFineModelOption( $setting->openai_default_model ); @endphp
-                        </select>
-                        <x-alert class="mt-2">
-                            <p class="text-justify">
-                                {{ __('Please note GPT-4 is not working with every api_key. You have to have an api key which can work with GPT-4.') }}
-                            </p>
-                            <p>
-                                {{ __('Also please note that Chat models works with ChatGPT and GPT-4 models. So if you choose below it will automatically use ChatGPT.') }}
-                            </p>
-                        </x-alert>
-                    </x-card>
-                </div>
+					$current_model = EntityEnum::fromSlug($setting->openai_default_model ?? EntityEnum::GPT_4_O->slug())->slug();
+                @endphp
+				<x-model-select-list-with-change-alert :listLabel="'OpenAI Default Word Model'" :listId="'openai_default_model'" currentModel="{{ $current_model }}" :fineModelOptions="true" :drivers="$openaiWordDrivers" />
             </div>
             <div class="col-md-6">
                 <div class="mb-3">

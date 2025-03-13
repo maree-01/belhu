@@ -22,7 +22,7 @@
     id="lqd-generator-options"
 >
     <x-card class="mb-5 text-2xs">
-        <x-remaining-credit style="inline" />
+        <x-credit-list :is-js="false" />
     </x-card>
 
     <form
@@ -56,7 +56,7 @@
                     <x-slot:label-extra>
                         <a
                             class="size-6 inline-flex items-center justify-center rounded-lg bg-green-500/20 text-green-700 transition-all hover:scale-110 hover:bg-green-500 hover:text-green-100"
-                            href="{{ LaravelLocalization::localizeUrl(route('dashboard.user.brand.edit')) }}"
+                            href="{{ LaravelLocalization::localizeUrl(route('dashboard.user.brand.create')) }}"
                         >
                             <x-tabler-plus class="size-4" />
                         </a>
@@ -84,6 +84,8 @@
                     <option value="">{{ __('Select Product') }}</option>
                 </x-forms.input>
             </div>
+
+
         </div>
 
         <div
@@ -109,7 +111,8 @@
                     label="{{ __('Number of Results') }}"
                     type="number"
                     name="number_of_results"
-                    value="1"
+					min="1"
+					value="1"
                     size="lg"
                     placeholder="{{ __('Number of results') }}"
                     required
@@ -242,6 +245,8 @@
                     placeholder="{{ __('Maximum character length of text') }}"
                     required
                     size="lg"
+					min="1"
+					step="1"
                 />
             @endif
 
@@ -295,6 +300,25 @@
                     switcher
                 />
             @endif
+        @endif
+
+        @if ($models->count() && setting('select_model_option', '0') == '1')
+        <x-forms.input
+                    id="chatbot_front_model"
+                    type="select"
+                    size="lg"
+                    name="chatbot_front_model"
+                    label="{{ __('Select model') }}"
+            >
+                <option value="">
+                    {{ __('Select model') }}
+                </option>
+                @foreach($models as $model)
+                    <option value="{{ $model->key }}">
+                        {{ $model->selected_title }}
+                    </option>
+                @endforeach
+            </x-forms.input>
         @endif
         <input
             id="openai_type"

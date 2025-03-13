@@ -13,14 +13,15 @@ class ApplicationStatusRepository implements ApplicationStatusRepositoryInterfac
 {
     public string $baseLicenseUrl = 'https://portal.liquid-themes.com/api/license';
 
-    public function financePage(): string
+    public function financePage(string $view = 'panel.admin.finance.gateways.particles.finance'): string
     {
         if ($this->licenseType() === 'Extended License') {
-            return 'panel.admin.finance.gateways.particles.finance';
+            return $view;
         }
 
         return 'panel.admin.finance.gateways.particles.license';
     }
+
     public function financeLicense(): bool
     {
         return $this->licenseType() === 'Extended License';
@@ -35,15 +36,15 @@ class ApplicationStatusRepository implements ApplicationStatusRepositoryInterfac
 
     public function check(string $licenseKey, bool $installed = false): bool
     {
-        $response = Http::get($this->baseLicenseUrl.DIRECTORY_SEPARATOR.$licenseKey);
+        $response = Http::get($this->baseLicenseUrl . DIRECTORY_SEPARATOR . $licenseKey);
 
         if ($response->ok() && $response->json('success')) {
             $portal = $this->portal() ?: [];
 
             $data = array_merge($portal, [
-                'liquid_license_type' => $response->json('licenseType'),
+                'liquid_license_type'       => $response->json('licenseType'),
                 'liquid_license_domain_key' => $licenseKey,
-                'installed' => $installed,
+                'installed'                 => $installed,
             ]);
 
             return $this->save($data);
@@ -57,12 +58,11 @@ class ApplicationStatusRepository implements ApplicationStatusRepositoryInterfac
         $data = Storage::disk('local')->get('portal');
 
         if ($data) {
-            return unserialize($data);
+            return unserialize(trim($data));
         }
 
         return null;
     }
-
 
     public function getVariable(string $key)
     {
@@ -80,7 +80,6 @@ class ApplicationStatusRepository implements ApplicationStatusRepositoryInterfac
     {
         $data = $this->portal();
 
-
         if (is_null($data)) {
             return;
         }
@@ -95,22 +94,19 @@ class ApplicationStatusRepository implements ApplicationStatusRepositoryInterfac
             && Schema::hasColumn('settings_two', 'liquid_license_domain_key')
         ) {
             SettingTwo::query()->first()->update([
-                'liquid_license_type' => $data['liquid_license_type'],
+                'liquid_license_type'       => $data['liquid_license_type'],
                 'liquid_license_domain_key' => $data['liquid_license_domain_key'],
             ]);
         }
     }
 
-    public function generate(Request $request): void
+    public function generate(Request $request): bool
     {
         if ($request->exists(['liquid_license_status', 'liquid_license_domain_key', 'liquid_license_domain_key'])) {
-            $data = [
-                'liquid_license_key' => $request->input('liquid_license_key'), // 'liquid_license_key' => $request->input('liquid_license_key'),
-                'liquid_license_domain_key' => $request->input('liquid_license_domain_key'),
-            ];
-
-            $this->save($data);
+            return $this->check($request->input('liquid_license_domain_key'), true);
         }
+
+        return false;
     }
 
     public function next($request, Closure $next)

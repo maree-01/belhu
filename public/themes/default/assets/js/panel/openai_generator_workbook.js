@@ -9,18 +9,17 @@ function isHTML(string) {
 	return Array.from(new DOMParser().parseFromString(string, 'text/html').body.childNodes).some(({ nodeType }) => nodeType == 1);
 }
 
-const generate = async ( message_no, creativity, maximum_length, number_of_results, prompt , openai_id) => {
+const generate = async ( message_no, creativity, maximum_length, number_of_results, prompt, openai_id, open_router_model) => {
 	'use strict';
 	const submitBtn = document.getElementById( 'openai_generator_button' );
 	const typingEl = document.querySelector( '.tox-edit-area > .lqd-typing' );
+	const markdownRenderer = window.markdownit();
 
 	const chunk = [];
 	let streaming = true;
 	let result = '';
 	let formattedText = null;
 	let textIsFormatted = false;
-
-	const md = window.markdownit();
 
 	const nIntervId = setInterval( function () {
 		if ( chunk.length == 0 && !streaming ) {
@@ -37,14 +36,17 @@ const generate = async ( message_no, creativity, maximum_length, number_of_resul
 
 			// at the end format the content from markdown to html
 			if ( !isHTML(finalResult) && !textIsFormatted && finalResult ) {
-				formattedText = md.render(md.utils.unescapeAll(finalResult));
+				formattedText = markdownRenderer.render(markdownRenderer.utils.unescapeAll(finalResult));
 				textIsFormatted = true;
 			}
 
-			console.log(finalResult);
-			console.log(isHTML(finalResult));
-
 			tinyMCE.activeEditor.setContent( formattedText || finalResult );
+
+			// moving the cursor to the end
+			tinymce.activeEditor.selection.select(tinyMCE.activeEditor.getBody(), true);
+			tinymce.activeEditor.selection.collapse(false);
+			tinymce.activeEditor.focus();
+			tinymce.activeEditor.insertContent('<p></p>');
 
 			clearInterval( nIntervId );
 		}
@@ -61,6 +63,12 @@ const generate = async ( message_no, creativity, maximum_length, number_of_resul
 	if (stream_type == 'backend') {
 		var signal = new AbortController().signal;
 		var formData = new FormData();
+
+		if (document.getElementById('chatbot_front_model')) {
+			let chatbot_front_model = document.getElementById('chatbot_front_model').value;
+			formData.append('chatbot_front_model', chatbot_front_model);
+		}
+
 		formData.append('template_type', 'writer');
 		formData.append('message_id', message_no);
 		formData.append('prompt', prompt);
@@ -68,6 +76,7 @@ const generate = async ( message_no, creativity, maximum_length, number_of_resul
 		formData.append('maximum_length', maximum_length);
 		formData.append('number_of_results', number_of_results);
 		formData.append('openai_id', openai_id);
+		formData.append('open_router_model', open_router_model);
 		var receivedMessageId = false;
 		fetchEventSource('/dashboard/user/generator/generate-stream', {
 			method: 'POST',
@@ -76,7 +85,7 @@ const generate = async ( message_no, creativity, maximum_length, number_of_resul
 			},
 			body: formData,
 			signal: signal,
-			onmessage: (e) => {
+			onmessage: e => {
 				if (!receivedMessageId) {
 					var eventData = e.event.split('\n').reduce((acc, line) => {
 						if (line.startsWith('message')) {
@@ -101,11 +110,10 @@ const generate = async ( message_no, creativity, maximum_length, number_of_resul
 				}
 			},
 			onclose: () => {
-				// console.log('Connection closed');
 				streamed_message_id = 0;
 				streamed_text = '';
 			},
-			onerror: (err) => {
+			onerror: err => {
 				throw err; // stop retrying
 			}
 		});
@@ -143,7 +151,7 @@ const generate = async ( message_no, creativity, maximum_length, number_of_resul
 				}),
 			});
 
-			if(response.status != 200) {
+			if (response.status != 200) {
 				throw response;
 			}
 			// Read the response as a stream of data
@@ -166,9 +174,9 @@ const generate = async ( message_no, creativity, maximum_length, number_of_resul
 				const lines = chunk1.split('\n');
 
 				const parsedLines = lines
-					.map((line) => line.replace(/^data: /, '').trim()) // Remove the "data: " prefix
-					.filter((line) => line !== '' && line !== '[DONE]') // Remove empty lines and "[DONE]"
-					.map((line) => {
+					.map(line => line.replace(/^data: /, '').trim()) // Remove the "data: " prefix
+					.filter(line => line !== '' && line !== '[DONE]') // Remove empty lines and "[DONE]"
+					.map(line => {
 						try {
 							return JSON.parse(line);
 						} catch (ex) {
@@ -189,12 +197,12 @@ const generate = async ( message_no, creativity, maximum_length, number_of_resul
 				}
 			}
 		} catch (error) {
-			switch(error.status) {
-			case 429:
-				toastr.error(magicai_localize?.api_connection_error || 'Api Connection Error. You hit the rate limites of openai requests. Please check your Openai API Key');
-				break;
-			default:
-				toastr.error(magicai_localize?.api_connection_error_admin || 'Api Connection Error. Please contact system administrator via Support Ticket. Error is: API Connection failed due to API keys');
+			switch (error.status) {
+				case 429:
+					toastr.error(magicai_localize?.api_connection_error || 'Api Connection Error. You hit the rate limites of openai requests. Please check your Openai API Key');
+					break;
+				default:
+					toastr.error(magicai_localize?.api_connection_error_admin || 'Api Connection Error. Please contact system administrator via Support Ticket. Error is: API Connection failed due to API keys');
 			}
 
 			submitBtn.classList.remove( 'lqd-form-submitting' );
@@ -225,11 +233,12 @@ function calculateWords( sentence ) {
 
 	return wordCount;
 }
-function saveResponse( input, response, message_no , title = null) {
+function saveResponse( input, response, message_no, title = null, resave = false) {
 	var formData = new FormData();
 	formData.append( 'input', input );
 	formData.append( 'response', response );
 	formData.append( 'message_id', message_no );
+	formData.append( 'resave', resave.toString());
 	if (title != null) {
 		formData.append( 'title', title );
 	}
@@ -242,6 +251,7 @@ function saveResponse( input, response, message_no , title = null) {
 	} );
 	return false;
 }
+
 const tinymceOptions = {
 	selector: '.tinymce',
 	height: 543,
@@ -255,10 +265,10 @@ const tinymceOptions = {
 	content_css: `${window.liquid.assetsPath}/css/tinymce-theme.css`,
 	forced_root_block: 'div',
 	supercode: {
-		renderer: (markdownCode) => {
+		renderer: markdownCode => {
 			return window.markdownit().render(markdownCode);
 		},
-		parser: (htmlCode) => {
+		parser: htmlCode => {
 			const HtmlToMarkdown = new TurndownService();
 			return HtmlToMarkdown.turndown(htmlCode);
 		},
@@ -266,6 +276,20 @@ const tinymceOptions = {
 		language: 'markdown', // Uses 'markdown' language for code highlighting and autocomplete
 	},
 	setup: function ( editor ) {
+
+		editor.on('init', function (event) {
+			const content = editor.getContent();
+			const finalResult = content?.replace(/<div>|<\/div>/g, '')?.replace(/<br>|<br\/>/g, '\n');
+			const markdownRenderer = window.markdownit();
+			let formattedText = null;
+
+			if (  finalResult && !isHTML(finalResult) ) {
+				formattedText = markdownRenderer.render(markdownRenderer.utils.unescapeAll(finalResult));
+			}
+
+			editor.setContent( formattedText || finalResult );
+		});
+
 		const menuItems = {
 			'customwrite': {
 				icon: 'magicIcon',
@@ -275,8 +299,7 @@ const tinymceOptions = {
 						e.preventDefault();
 						return;
 					}
-					console.log( event );
-					if(editor.selection.getContent().trim().length == 0) {
+					if (editor.selection.getContent().trim().length == 0) {
 						toastr.warning('Please select text');
 						return;
 					}
@@ -304,7 +327,7 @@ const tinymceOptions = {
 				icon: 'magicIconRewrite',
 				text: magicai_localize?.rewrite || 'Rewrite',
 				onAction: function () {
-					if(editor.selection.getContent().trim().length == 0) {
+					if (editor.selection.getContent().trim().length == 0) {
 						toastr.warning('Please select text');
 						return;
 					}
@@ -332,7 +355,7 @@ const tinymceOptions = {
 				icon: 'magicIconSummarize',
 				text: magicai_localize?.summarize || 'Summarize',
 				onAction: function () {
-					if(editor.selection.getContent().trim().length == 0) {
+					if (editor.selection.getContent().trim().length == 0) {
 						toastr.warning('Please select text');
 						return;
 					}
@@ -360,7 +383,7 @@ const tinymceOptions = {
 				icon: 'magicIconMakeItLonger',
 				text: magicai_localize?.make_it_longer || 'Make it Longer',
 				onAction: function () {
-					if(editor.selection.getContent().trim().length == 0) {
+					if (editor.selection.getContent().trim().length == 0) {
 						toastr.warning('Please select text');
 						return;
 					}
@@ -388,7 +411,7 @@ const tinymceOptions = {
 				icon: 'magicIconMakeItShorter',
 				text: magicai_localize?.make_it_shorter || 'Make it Shorter',
 				onAction: function () {
-					if(editor.selection.getContent().trim().length == 0) {
+					if (editor.selection.getContent().trim().length == 0) {
 						toastr.warning('Please select text');
 						return;
 					}
@@ -416,7 +439,7 @@ const tinymceOptions = {
 				icon: 'magicIconImprove',
 				text: magicai_localize?.improve_writing || 'Improve Writing',
 				onAction: function () {
-					if(editor.selection.getContent().trim().length == 0) {
+					if (editor.selection.getContent().trim().length == 0) {
 						toastr.warning('Please select text');
 						return;
 					}
@@ -491,7 +514,7 @@ const tinymceOptions = {
 							icon: language.flag,
 							text: language.name,
 							onAction: function () {
-								if(editor.selection.getContent().trim().length == 0) {
+								if (editor.selection.getContent().trim().length == 0) {
 									toastr.warning('Please select text');
 									return;
 								}
@@ -518,57 +541,57 @@ const tinymceOptions = {
 						};
 					} );
 
-					return [...items, ...langs];
+					return [ ...items, ...langs ];
 				}
 			},
 			'changestyle': {
-					icon: 'magicIconChangeStyle',
-					text: magicai_localize?.change_style_to || 'Change Style To',
-					getSubmenuItems: function () {
-						const styles = [
-							'Professional',
-							'Conversational',
-							'Humorous',
-							'Empathic',
-							'Simple',
-							'Academic',
-							'Creative',
-						];
-						 
-						const items = styles.map( function ( style ) {
-							return {
-								type: 'menuitem',
-								text: style,
-								onAction: function () {
-									if(editor.selection.getContent().trim().length == 0) {
-										toastr.warning('Please select text');
-										return;
-									}
-									Alpine.store('appLoadingIndicator').show();
-									let formData = new FormData();
-									formData.append( 'prompt', 'Change style of below content to ' + style + ' style.\n' );
-									formData.append( 'content', editor.selection.getContent() );
-									$.ajax( {
-										type: 'post',
-										url: '/dashboard/user/openai/update-writing',
-										data: formData,
-										contentType: false,
-										processData: false,
-										success: function ( data ) {
-											editor.selection.setContent( data.result );
-											Alpine.store('appLoadingIndicator').hide();
-										},
-										error: function ( data ) {
-											Alpine.store('appLoadingIndicator').hide();
-										}
-									} );
-								}
-							};
-						} );
+				icon: 'magicIconChangeStyle',
+				text: magicai_localize?.change_style_to || 'Change Style To',
+				getSubmenuItems: function () {
+					const styles = [
+						'Professional',
+						'Conversational',
+						'Humorous',
+						'Empathic',
+						'Simple',
+						'Academic',
+						'Creative',
+					];
 
-						return items;
-					}
-			},		
+					const items = styles.map( function ( style ) {
+						return {
+							type: 'menuitem',
+							text: style,
+							onAction: function () {
+								if (editor.selection.getContent().trim().length == 0) {
+									toastr.warning('Please select text');
+									return;
+								}
+								Alpine.store('appLoadingIndicator').show();
+								let formData = new FormData();
+								formData.append( 'prompt', 'Change style of below content to ' + style + ' style.\n' );
+								formData.append( 'content', editor.selection.getContent() );
+								$.ajax( {
+									type: 'post',
+									url: '/dashboard/user/openai/update-writing',
+									data: formData,
+									contentType: false,
+									processData: false,
+									success: function ( data ) {
+										editor.selection.setContent( data.result );
+										Alpine.store('appLoadingIndicator').hide();
+									},
+									error: function ( data ) {
+										Alpine.store('appLoadingIndicator').hide();
+									}
+								} );
+							}
+						};
+					} );
+
+					return items;
+				}
+			},
 			'changetone': {
 				icon: 'magicIconChangeTone',
 				text: magicai_localize?.change_tone_to || 'Change Tone To',
@@ -598,7 +621,7 @@ const tinymceOptions = {
 							type: 'menuitem',
 							text: tone,
 							onAction: function () {
-								if(editor.selection.getContent().trim().length == 0) {
+								if (editor.selection.getContent().trim().length == 0) {
 									toastr.warning('Please select text');
 									return;
 								}
@@ -623,15 +646,15 @@ const tinymceOptions = {
 							}
 						};
 					} );
-					
+
 					return items;
 				}
 			},
-			'simplify':{
+			'simplify': {
 				icon: 'magicIconSimplify',
 				text: magicai_localize?.simplify || 'Simplify',
 				onAction: function () {
-					if(editor.selection.getContent().trim().length == 0) {
+					if (editor.selection.getContent().trim().length == 0) {
 						toastr.warning('Please select text');
 						return;
 					}
@@ -659,7 +682,7 @@ const tinymceOptions = {
 				icon: 'magicIconFixGrammer',
 				text: magicai_localize?.fix_grammatical_mistakes || 'Fix grammatical mistakes',
 				onAction: function () {
-					if(editor.selection.getContent().trim().length == 0) {
+					if (editor.selection.getContent().trim().length == 0) {
 						toastr.warning('Please select text');
 						return;
 					}
@@ -710,7 +733,7 @@ const tinymceOptions = {
 
 		editor.ui.registry.addMenuButton( 'magicAIButton', {
 			icon: 'magicIcon',
-			fetch: ( callback ) => {
+			fetch: callback => {
 				const items = Object.values( menuItems ).splice( 1 ).map( val => ( { type: 'menuitem', ...val } ) );
 				callback( items );
 			}
@@ -758,8 +781,7 @@ const tinymceOptions = {
 			tinymce.activeEditor.execCommand( 'Redo' );
 		} );
 		$( 'body' ).on( 'click', '#workbook_copy', () => {
-			const codeOutput = document.querySelector( '#code-output' );
-			if ( codeOutput && window.codeRaw ) {
+			if ( window.codeRaw ) {
 				navigator.clipboard.writeText( window.codeRaw );
 				toastr.success( 'Code copied to clipboard' );
 				return;
@@ -767,8 +789,14 @@ const tinymceOptions = {
 			if ( tinymce?.activeEditor ) {
 				tinymce.activeEditor.execCommand( 'selectAll', true );
 				const content = tinymce.activeEditor.selection.getContent( { format: 'html' } );
-				navigator.clipboard.writeText( content );
-				toastr.success( 'Content copied to clipboard' );
+				// Create a ClipboardItem for HTML
+				const blob = new Blob([ content ], { type: 'text/html' });
+				const item = new ClipboardItem({ 'text/html': blob });
+				navigator.clipboard.write([ item ]).then(() => {
+					toastr.success( 'Content copied to clipboard' );
+				}).catch(err => {
+					console.error('Failed to copy: ', err);
+				});
 				return;
 			}
 		} );
@@ -813,16 +841,14 @@ const tinymceOptions = {
 
 		} );
 	} );
-	// document.addEventListener( 'DOMContentLoaded', function () {
-	// 	tinyMCE.init( tinymceOptions );
-	// } );
+
 	if (stream_type == 'backend') {
 		window.addEventListener('beforeunload', function(e) {
 			$.ajax({
 				type: 'post',
 				url: '/dashboard/user/generator/reduce-tokens/wrtier',
 				data: {
-					streamed_text : streamed_text,
+					streamed_text: streamed_text,
 					streamed_message_id: streamed_message_id
 				}
 			});

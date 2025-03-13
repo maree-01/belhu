@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Domains\Engine\Enums\EngineEnum;
+use App\Domains\Entity\EntityStats;
+use App\Domains\Entity\Enums\EntityEnum;
+use App\Domains\Entity\Facades\Entity;
 use App\Enums\BedrockEngine;
 use App\Helpers\Classes\Helper;
 use App\Models\ArticleWizard;
@@ -13,32 +17,33 @@ use App\Services\Bedrock\BedrockRuntimeService;
 use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ClientException;
+use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Exception\RequestException;
 use Illuminate\Http\File;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use JsonException;
 use OpenAI\Laravel\Facades\OpenAI;
+use Random\RandomException;
 
 class AIArticleWizardController extends Controller
 {
     protected BedrockRuntimeService $bedrockService;
+
     protected $client;
 
     protected $settings;
 
     protected $settings_two;
 
-    const STABLEDIFFUSION = 'stablediffusion';
+    public const STORAGE_S3 = 's3';
 
-    const STORAGE_S3 = 's3';
+    public const STORAGE_LOCAL = 'public';
 
-    const STORAGE_LOCAL = 'public';
-
-    const CLOUDFLARE_R2 = 'r2';
+    public const CLOUDFLARE_R2 = 'r2';
 
     public function __construct(BedrockRuntimeService $bedrockService)
     {
@@ -49,8 +54,8 @@ class AIArticleWizardController extends Controller
             return $next($request);
         });
         //Settings
-        $this->settings = Setting::first();
-        $this->settings_two = SettingTwo::first();
+        $this->settings = Setting::getCache();
+        $this->settings_two = SettingTwo::getCache();
         ini_set('max_execution_time', 120000);
     }
 
@@ -96,7 +101,7 @@ class AIArticleWizardController extends Controller
 
             ArticleWizard::where('user_id', $user_id)->delete();
 
-            $wizard = new ArticleWizard();
+            $wizard = new ArticleWizard;
             $wizard->user_id = $user_id;
             $wizard->current_step = 0;
             $wizard->keywords = '';
@@ -122,7 +127,7 @@ class AIArticleWizardController extends Controller
             $apikeyPart2 = base64_encode(rand(1, 100));
             $apikeyPart3 = base64_encode(rand(1, 100));
         } else {
-            $settings = Setting::first();
+            $settings = Setting::getCache();
             // Fetch the Site Settings object with openai_api_secret
             if ($this->settings?->user_api_option) {
                 $apiKeys = explode(',', auth()->user()?->api_keys);
@@ -195,39 +200,32 @@ class AIArticleWizardController extends Controller
     /** # | not rec
      * Generate keywords from topic
      */
-    public function userRemaining(Request $request)
+    public function userRemaining(Request $request): \Illuminate\Http\JsonResponse
     {
-        $user = Auth::user();
-
-        return response()->json(['words' => $user->remaining_words, 'images' => $user->remaining_images]);
+        return response()->json(['words' =>  EntityStats::word()->totalCredits(), 'images' =>  EntityStats::image()->totalCredits()]);
     }
 
     // | not rec
     public function generateKeywords(Request $request)
     {
-        $user = Auth::user();
-        if ($user->remaining_words <= 0 and $user->remaining_words != -1) {
-            $data = [
-                'message' => ['You have no credits left. Please consider upgrading your plan.'],
-            ];
-
-            return response()->json($data, 419);
-        }
         try {
+            // @todo will be changed.
+            $chatBot = $this->getDefaultOpenAiWordModel();
+            $driver = Entity::driver($chatBot);
+            $driver->redirectIfNoCreditBalance();
+
             $completion = OpenAI::chat()->create([
-                'model' => $this->settings->openai_default_model,
+                'model'    => $chatBot?->value,
                 'messages' => [[
-                    'role' => 'user',
+                    'role'    => 'user',
                     'content' => "Generate $request->count keywords(simple words or 2 words, not phrase, not person name) about '$request->topic'. Must resut as array json data. in '$request->language' language. Result format is [keyword1, keyword2, ..., keywordn].  Must not write ```json",
                 ]],
             ]);
-            $total_used_tokens = countWords($completion['choices'][0]['message']['content']);
 
-            $user = Auth::user();
+            $responsedText = $completion['choices'][0]['message']['content'];
+            $driver->input($responsedText)->calculateCredit()->decreaseCredit();
 
-            userCreditDecreaseForWord($user, $total_used_tokens, $this->settings->openai_default_model);
-
-            return response()->json(['result' => $completion['choices'][0]['message']['content']])->header('Content-Type', 'application/json');
+            return response()->json(['result' => $responsedText])->header('Content-Type', 'application/json');
         } catch (Exception $e) {
             return response()->json([
                 'message' => $e->getMessage(),
@@ -238,32 +236,28 @@ class AIArticleWizardController extends Controller
     // | not rec
     public function generateTitles(Request $request)
     {
-        $user = Auth::user();
-        if ($user->remaining_words <= 0 and $user->remaining_words != -1) {
-            $data = [
-                'message' => ['You have no credits left. Please consider upgrading your plan.'],
-            ];
-
-            return response()->json($data, 419);
-        }
         try {
-            $prompt = "Generate $request->count titles(Maximum title length is $request->length. Must not be 'title1', 'title2', 'title3', 'title4', 'title5') about Keywords: '".$request->keywords."'. in '$request->language' language. Resut must be array json data. This is result format: [title1, title2, ..., titlen]. Maximum title length is $request->length  Must not write ```json";
+            $defaultModel = $this->getDefaultOpenAiWordModel();
+            $driver = Entity::driver($defaultModel);
+            $driver->redirectIfNoCreditBalance();
+
+            $prompt = "Generate $request->count titles(Maximum title length is $request->length. Must not be 'title1', 'title2', 'title3', 'title4', 'title5') about Keywords: '" . $request->keywords . "'. in '$request->language' language. Resut must be array json data. This is result format: [title1, title2, ..., titlen]. Maximum title length is $request->length  Must not write ```json";
             if ($request->topic != '') {
-                $prompt = "Generate $request->count titles(Maximum title length is $request->length., Must not be 'title1', 'title2', 'title3', 'title4', 'title5') about Topic: '".$request->topic."'. in '$request->language' language. Resut must be array json data. This is result format: [title1, title2, ..., titlen]. Maximum title length is $request->length  Must not write ```json";
+                $prompt = "Generate $request->count titles(Maximum title length is $request->length., Must not be 'title1', 'title2', 'title3', 'title4', 'title5') about Topic: '" . $request->topic . "'. in '$request->language' language. Resut must be array json data. This is result format: [title1, title2, ..., titlen]. Maximum title length is $request->length  Must not write ```json";
             }
             $completion = OpenAI::chat()->create([
-                'model' => $this->settings->openai_default_model,
+                'model'    => $defaultModel?->value,
                 'messages' => [[
-                    'role' => 'user',
+                    'role'    => 'user',
                     'content' => $prompt,
                 ]],
             ]);
-            $total_used_tokens = countWords($completion['choices'][0]['message']['content']);
-            $user = Auth::user();
+            $responsedText = $completion['choices'][0]['message']['content'];
+            $driver->input($responsedText)
+                ->calculateCredit()
+                ->decreaseCredit();
 
-            userCreditDecreaseForWord($user, $total_used_tokens, $this->settings->openai_default_model);
-
-            return response()->json(['result' => $completion['choices'][0]['message']['content']])->header('Content-Type', 'application/json');
+            return response()->json(['result' => $responsedText])->header('Content-Type', 'application/json');
         } catch (Exception $e) {
             return response()->json([
                 'message' => $e->getMessage(),
@@ -274,34 +268,28 @@ class AIArticleWizardController extends Controller
     // | not rec
     public function generateOutlines(Request $request)
     {
-
-        $user = Auth::user();
-        if ($user->remaining_words <= 0 and $user->remaining_words != -1) {
-            $data = [
-                'message' => ['You have no credits left. Please consider upgrading your plan.'],
-            ];
-
-            return response()->json($data, 419);
-        }
-
         try {
             $prompt = "The keywords of article are $request->keywords.  Generate different outlines( Each outline must has only $request->subcount subtitles(Without number for order, subtitles are not keywords)) $request->count times. The depth is 1. in '$request->language' language. Must not write any description. Result must be json data, Every subtitle is sentence or phrase string. This is result format: [[subtitle1(string), subtitle2(string), subtitle3(string), ... , subtitle-$request->subcount(string)], [subtitle1(string), subtitle2(string), subtitle3(string), ... , subtitle-$request->subcount(string)], ... ,[subtitle1(string), subtitle2(string), subtitle3(string), ..., subtitle-$request->subcount (string)].  Must not write ```json";
-            if ($request->topic != '') {
-                $prompt = "The subject of article is $request->topic. Generate different outlines( Each outline must has only $request->subcount subtitles(Without number for order, subtitles are not keywords)) $request->count times. The depth is 1".". in '$request->language' language. Must not write any description. Result must be json data, Every subtitle is sentence or phrase string. This is result format: [[subtitle1(string), subtitle2(string), subtitle3(string), ... , subtitle-$request->subcount(string)], [subtitle1(string), subtitle2(string), subtitle3(string), ... , subtitle-$request->subcount(string)], ... ,[subtitle1(string), subtitle2(string), subtitle3(string), ..., subtitle-$request->subcount (string)]].  Must not write ```json";
+            if ($request->topic !== '') {
+                $prompt = "The subject of article is $request->topic. Generate different outlines( Each outline must has only $request->subcount subtitles(Without number for order, subtitles are not keywords)) $request->count times. The depth is 1" . ". in '$request->language' language. Must not write any description. Result must be json data, Every subtitle is sentence or phrase string. This is result format: [[subtitle1(string), subtitle2(string), subtitle3(string), ... , subtitle-$request->subcount(string)], [subtitle1(string), subtitle2(string), subtitle3(string), ... , subtitle-$request->subcount(string)], ... ,[subtitle1(string), subtitle2(string), subtitle3(string), ..., subtitle-$request->subcount (string)]].  Must not write ```json";
             }
+            $chatBot = $this->getDefaultOpenAiWordModel();
+            $driver = Entity::driver($chatBot);
+            $driver->redirectIfNoCreditBalance();
             $completion = OpenAI::chat()->create([
-                'model' => $this->settings->openai_default_model,
+                'model'    => $chatBot?->value,
                 'messages' => [[
-                    'role' => 'user',
+                    'role'    => 'user',
                     'content' => $prompt,
                 ]],
             ]);
 
-            $total_used_tokens = countWords($completion['choices'][0]['message']['content']);
+            $responsedText = $completion['choices'][0]['message']['content'];
+            $driver->input($responsedText)
+                ->calculateCredit()
+                ->decreaseCredit();
 
-            userCreditDecreaseForWord($user, $total_used_tokens, $this->settings->openai_default_model);
-
-            return response()->json(['result' => $completion['choices'][0]['message']['content'], 'words' => $user->remaining_words, 'images' => $user->remaining_images])->header('Content-Type', 'application/json');
+            return response()->json(['result' => $responsedText, 'words' =>  EntityStats::word()->totalCredits(), 'images' =>  EntityStats::image()->totalCredits()])->header('Content-Type', 'application/json');
         } catch (Exception $e) {
             return response()->json([
                 'message' => $e->getMessage(),
@@ -312,40 +300,30 @@ class AIArticleWizardController extends Controller
     // | not rec
     public function generateArticle(Request $request)
     {
-
-        $user = Auth::user();
-        if ($user->remaining_words <= 0 and $user->remaining_words != -1) {
-            $data = [
-                'message' => ['You have no credits left. Please consider upgrading your plan.'],
-            ];
-
-            return response()->json($data, 419);
-        }
-
         try {
             $wizard = ArticleWizard::find($request->id);
             $title = $wizard->title;
             $keywords = $wizard->keywords;
             $outlines = json_decode($wizard->outline, true);
-
             $length = $request->length;
-
             session_start();
             header('Content-type: text/event-stream');
             header('Cache-Control: no-cache');
-            // ob_end_flush();
+            $chatBot = $this->getDefaultOpenAiWordModel();
+            Entity::driver($chatBot)
+                ->redirectIfNoCreditBalance();
             $result = OpenAI::chat()->createStreamed([
-                'model' => $this->settings->openai_default_model,
+                'model'    => $chatBot?->value,
                 'messages' => [[
-                    'role' => 'user',
-                    'content' => "Write Article(Maximum  $length words). in $wizard-> language. Generate article (Must not contain title, Must Mark outline with <h3> tag) about $title with following outline ".implode(',', $outlines).'Must mark outline with <h3> tag.  Must not write ```json',
+                    'role'    => 'user',
+                    'content' => "Write Article(Maximum  $length words). in $wizard-> language. Generate article (Must not contain title, Must Mark outline with <h3> tag) about $title with following outline " . implode(',', $outlines) . 'Must mark outline with <h3> tag.  Must not write ```json',
                 ]],
                 'stream' => true,
             ]);
 
             foreach ($result as $response) {
                 echo "event: data\n";
-                echo 'data: '.json_encode(['message' => $response->choices[0]->delta->content])."\n\n";
+                echo 'data: ' . json_encode(['message' => $response->choices[0]->delta->content]) . "\n\n";
                 flush();
             }
 
@@ -361,154 +339,86 @@ class AIArticleWizardController extends Controller
     // | not rec
     public function generateImages(Request $request)
     {
-        $user = Auth::user();
-        if ($user->remaining_images <= 0 and $user->remaining_images != -1) {
-            $data = [
-                'message' => ['You have no credits left. Please consider upgrading your plan.'],
-            ];
+        $defaultEngine = setting('default_aw_image_engine', EngineEnum::UNSPLASH->value);
+        $defaultModel = $this->getDefaultImageModelFromImageEngine($defaultEngine);
 
-            return response()->json($data, 419);
-        }
         try {
             $wizard = ArticleWizard::find($request->id);
-
             $size = $request->size;
             $prompt = $request->prompt;
-            if ($prompt == '' || $prompt == null) {
+            if (empty($prompt)) {
                 $prompt = $wizard->topic_keywords;
             }
             $count = $request->count;
-
             $paths = [];
-
-            $this->getImagesFromThirdParty($prompt, $count, $size, $paths);
+            $this->checkBalanceForImages($defaultModel, $count);
+            $this->getImagesFromThirdParty($defaultEngine, $defaultModel, $prompt, $count, $size, $paths);
 
             return response()->json(['status' => 'success', 'path' => $paths]);
-        } catch (ClientException $e) {
-            if ($e->getResponse()->getStatusCode() === 401) {
+        } catch (ClientException|Exception|GuzzleException $e) {
+            $engine = $defaultEngine === 'sd' ? EngineEnum::STABLE_DIFFUSION->slug() : $defaultEngine;
+
+            if (! ($e instanceof Exception) && $e?->getResponse()?->getStatusCode() === 401) {
                 // Unauthorized error
-                if (Auth::user()->type == 'admin') {
+                if (Auth::user()?->isAdmin()) {
                     return response()->json([
-                        'message' => __('It seems your Unsplash API key is missing or invalid. Please go to your settings and add a valid Unsplash API key.'),
-                    ], 401);
-                } else {
-                    return response()->json([
-                        'message' => __('It seems that Unsplash API not set yet or is missing or invalid. Please submit a ticket to support.'),
+                        'message' => __('It seems your :label API key is missing or invalid. Please go to your settings and add a valid :label API key.', ['label' => EngineEnum::fromSlug($engine)->label()]),
                     ], 401);
                 }
-            } else {
+
                 return response()->json([
-                    'message' => $e->getMessage(),
-                ], 500);
+                    'message' => __('It seems that :label API not set yet or is missing or invalid. Please submit a ticket to support.', ['label' =>  EngineEnum::fromSlug($engine)->label()]),
+                ], 401);
             }
-        }
-    }
 
-    private function getImagesFromThirdParty($prompt, $count, $size, &$paths)
-    {
-        switch (setting('default_aw_image_engine', 'unsplash')) {
-            case 'unsplash':
-                $this->getImagesFromUnsplash($prompt, $count, $size, $paths);
-                break;
-            case 'pexels':
-                $this->getImagesFromPexels($prompt, $count, $size, $paths);
-                break;
-            case 'pixabay':
-                $this->getImagesFromPixabay($prompt, $count, $size, $paths);
-                break;
-            case 'openai':
-                $this->getImagesDalle($prompt, $count, $size, $paths);
-                break;
-            case 'sd':
-                $this->getImagesFromStableDiffusion($prompt, $count, $size, $paths);
-                break;
-            default:
-                $this->getImagesFromUnsplash($prompt, $count, $size, $paths);
-                break;
-        }
-    }
-
-    private function getImagesFromUnsplash($prompt, $count, $size, &$paths)
-    {
-        $user = Auth::user();
-        $settings = $this->settings_two;
-        $image_storage = $this->settings_two->ai_image_storage;
-        $client = new Client();
-        $apiKey = $settings->unsplash_api_key;
-        $url = "https://api.unsplash.com/search/photos?query=$prompt&count=$count&client_id=$apiKey&orientation=landscape";
-        $response = $client->request('GET', $url, [
-            'headers' => [
-                'Accept' => 'application/json',
-            ],
-        ]);
-        $statusCode = $response->getStatusCode();
-        $content = $response->getBody();
-        if ($statusCode == 200) {
-            $images = json_decode($content)->results;
-
-            foreach ($images as $index => $image) {
-                $image_url = $image->urls->$size;
-                $imageContent = file_get_contents($image_url);
-                $nameOfImage = Str::random(12).'.png';
-
-                Storage::disk('public')->put($nameOfImage, $imageContent);
-                $path = 'uploads/'.$nameOfImage;
-
-                if ($image_storage == self::STORAGE_S3) {
-                    try {
-                        $uploadedFile = new File($path);
-                        $aws_path = Storage::disk('s3')->put('', $uploadedFile);
-                        unlink($path);
-                        $path = Storage::disk('s3')->url($aws_path);
-                    } catch (\Exception $e) {
-                        return response()->json(['status' => 'error', 'message' => 'AWS Error - '.$e->getMessage()]);
-                    }
-                } else {
-                    $path = "/$path";
-                }
-
-                array_push($paths, $path);
-
-                userCreditDecreaseForImage($user, 1, setting('default_aw_image_engine', 'unsplash'));
-                $count = $count - 1;
-                if ($count == 0) {
-                    break;
-                }
-            }
-        } else {
             return response()->json([
-                'status' => 'error',
-                'message' => __('Failed to download images.'),
+                'message' => $e->getMessage() . "Model: $defaultModel->value",
             ], 500);
         }
     }
 
-    private function getImagesFromPexels($prompt, $count, $size, &$paths)
+    /**
+     * @throws GuzzleException
+     * @throws JsonException
+     * @throws RandomException
+     */
+    private function getImagesFromThirdParty($defaultEngine, $defaultModel, $prompt, $count, $size, &$paths): void
     {
-        $user = Auth::user();
-        switch ($size) {
-            case 'thumb':
-                $size = 'tiny';
-                break;
-            case 'small':
-                $size = 'small';
-                break;
-            case 'small_s3':
-                $size = 'medium';
-                break;
-            case 'full':
-                $size = 'large';
-                break;
-            case 'raw':
-                $size = 'original';
-                break;
-            default:
-                $size = 'medium';
-                break;
-        }
-        $settings = $this->settings_two;
+        match ($defaultEngine) {
+            EngineEnum::PEXELS->value                     => $this->getImagesFromPexels($defaultModel, $prompt, $count, $size, $paths),
+            EngineEnum::PIXABAY->value                    => $this->getImagesFromPixabay($defaultModel, $prompt, $count, $paths),
+            EngineEnum::OPEN_AI->value                    => $this->getImagesDalle($defaultModel, $prompt, $count, $size, $paths),
+            'sd', EngineEnum::STABLE_DIFFUSION->value     => $this->getImagesFromStableDiffusion($defaultModel, $prompt, $count, $size, $paths),
+            default                                       => $this->getImagesFromUnsplash($defaultModel, $prompt, $count, $size, $paths),
+        };
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function checkBalanceForImages(EntityEnum $defaultModel, int $count): void
+    {
+        Entity::driver($defaultModel)->inputImageCount($count)->calculateCredit()->redirectIfNoCreditBalance();
+    }
+
+    /**
+     * @throws GuzzleException
+     * @throws JsonException
+     * @throws Exception
+     */
+    private function getImagesFromPexels($defaultModel, $prompt, $count, $size, &$paths)
+    {
+        $driver = Entity::driver($defaultModel)->inputImageCount($count)->calculateCredit();
+        $driver->redirectIfNoCreditBalance();
+        $size = match ($size) {
+            'thumb'    => 'tiny',
+            'small'    => 'small',
+            'full'     => 'large',
+            'raw'      => 'original',
+            default    => 'medium',
+        };
         $image_storage = $this->settings_two->ai_image_storage;
-        $client = new Client();
+        $client = new Client;
         $apiKey = setting('pexels_api_key');
         $url = "https://api.pexels.com/v1/search?query=$prompt&per_page=$count";
         $response = $client->request('GET', $url, [
@@ -518,51 +428,52 @@ class AIArticleWizardController extends Controller
         ]);
         $statusCode = $response->getStatusCode();
         $content = $response->getBody();
-        if ($statusCode == 200) {
-            $images = json_decode($content)->photos;
-            foreach ($images as $index => $image) {
-
-                $image_url = $image->src->$size;
-                $imageContent = file_get_contents($image_url);
-                $nameOfImage = Str::random(12).'.png';
-
+        if ($statusCode === 200) {
+            $images = json_decode($content, false, 512, JSON_THROW_ON_ERROR)->photos;
+            foreach ($images as $image) {
+                $imageContent = file_get_contents($image->src->$size);
+                $nameOfImage = Str::random(12) . '.png';
                 Storage::disk('public')->put($nameOfImage, $imageContent);
-                $path = 'uploads/'.$nameOfImage;
-
-                if ($image_storage == self::STORAGE_S3) {
+                $path = 'uploads/' . $nameOfImage;
+                if ($image_storage === self::STORAGE_S3) {
                     try {
                         $uploadedFile = new File($path);
                         $aws_path = Storage::disk('s3')->put('', $uploadedFile);
                         unlink($path);
                         $path = Storage::disk('s3')->url($aws_path);
-                    } catch (\Exception $e) {
-                        return response()->json(['status' => 'error', 'message' => 'AWS Error - '.$e->getMessage()]);
+                    } catch (Exception $e) {
+                        return response()->json(['status' => 'error', 'message' => 'AWS Error - ' . $e->getMessage()]);
                     }
                 } else {
                     $path = "/$path";
                 }
-
-                array_push($paths, $path);
-                userCreditDecreaseForImage($user, 1, setting('default_aw_image_engine', 'unsplash'));
-                $count = $count - 1;
-                if ($count == 0) {
+                $paths[] = $path;
+                $count--;
+                if ($count === 0) {
                     break;
                 }
             }
+            $driver->decreaseCredit();
         } else {
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => __('Failed to download images.'),
             ], 500);
         }
     }
 
-    private function getImagesFromPixabay($prompt, $count, $size, &$paths)
+    /**
+     * @throws GuzzleException
+     * @throws JsonException
+     * @throws Exception
+     */
+    private function getImagesFromPixabay($defaultModel, $prompt, $count, &$paths)
     {
-        $user = Auth::user();
-        $settings = $this->settings_two;
+        $driver = Entity::driver($defaultModel)->inputImageCount($count)->calculateCredit();
+        $driver->redirectIfNoCreditBalance();
+
         $image_storage = $this->settings_two->ai_image_storage;
-        $client = new Client();
+        $client = new Client;
         $apiKey = setting('pixabay_api_key');
         $url = "https://pixabay.com/api/?key=$apiKey&q=$prompt&image_type=photo&per_page=$count";
         $response = $client->request('GET', $url, [
@@ -573,128 +484,96 @@ class AIArticleWizardController extends Controller
         $statusCode = $response->getStatusCode();
         $content = $response->getBody();
         if ($statusCode == 200) {
-            $images = json_decode($content)->hits;
-            foreach ($images as $index => $image) {
+            $images = json_decode($content, false, 512, JSON_THROW_ON_ERROR)->hits;
+            foreach ($images as $image) {
                 $image_url = $image->webformatURL;
                 $imageContent = file_get_contents($image_url);
-                $nameOfImage = Str::random(12).'.png';
+                $nameOfImage = Str::random(12) . '.png';
 
                 Storage::disk('public')->put($nameOfImage, $imageContent);
-                $path = 'uploads/'.$nameOfImage;
-
-                if ($image_storage == self::STORAGE_S3) {
+                $path = 'uploads/' . $nameOfImage;
+                if ($image_storage === self::STORAGE_S3) {
                     try {
                         $uploadedFile = new File($path);
                         $aws_path = Storage::disk('s3')->put('', $uploadedFile);
                         unlink($path);
                         $path = Storage::disk('s3')->url($aws_path);
-                    } catch (\Exception $e) {
-                        return response()->json(['status' => 'error', 'message' => 'AWS Error - '.$e->getMessage()]);
+                    } catch (Exception $e) {
+                        return response()->json(['status' => 'error', 'message' => 'AWS Error - ' . $e->getMessage()]);
                     }
                 } else {
                     $path = "/$path";
                 }
-
-                array_push($paths, $path);
-                userCreditDecreaseForImage($user, 1, setting('default_aw_image_engine', 'unsplash'));
-                $count = $count - 1;
-                if ($count == 0) {
+                $paths[] = $path;
+                $count--;
+                if ($count === 0) {
                     break;
                 }
             }
+            $driver->decreaseCredit();
         } else {
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => __('Failed to download images.'),
             ], 500);
         }
     }
 
-    private function getImagesDalle($prompt, $count, $size, &$paths)
+    private function getImagesDalle($defaultModel, $prompt, $count, $size, &$paths)
     {
-        $user = Auth::user();
-        $count = 1;
-        $settings = $this->settings_two;
-        $image_storage = $this->settings_two->ai_image_storage;
-        $setting = $this->settings;
+        $driver = Entity::driver($defaultModel)->inputImageCount($count)->calculateCredit();
+        $driver->redirectIfNoCreditBalance();
 
-        if ($this->settings_two->dalle == 'dalle2') {
-            $model = 'dall-e-2';
-        } elseif ($this->settings_two->dalle == 'dalle3') {
-            $model = 'dall-e-3';
-        } else {
-            $model = 'dall-e-2';
-        }
+        $count = 1;
+        $image_storage = $this->settings_two->ai_image_storage;
 
         $lockKey = 'generate_image_lock';
-        $user = Auth::user();
         // Attempt to acquire lock
         if (! Cache::lock($lockKey, 10)->get()) {
             // Failed to acquire lock, another process is already running
             return response()->json(['message' => 'Image generation in progress. Please try again later.'], 409);
         }
+
         try {
             // check daily limit
             $chkLmt = Helper::checkImageDailyLimit();
             if ($chkLmt->getStatusCode() === 429) {
                 return $chkLmt;
             }
-            // check remainings
-            $chkImg = Helper::checkRemainingImages($user);
-            if ($chkImg->getStatusCode() === 429) {
-                return $chkImg;
-            }
 
-            switch ($size) {
-                case 'thumb':
-                    $size = $model == 'dall-e-3' ? '1024x1024' : '256x256';
-                    break;
-                case 'small':
-                    $size = $model == 'dall-e-3' ? '1024x1792' : '512x512';
-                    break;
-                case 'medium':
-                    $size = $model == 'dall-e-3' ? '1792x1024' : '1024x1024';
-                    break;
-                case 'large':
-                    $size = $model == 'dall-e-3' ? '1792x1024' : '1024x1024';
-                    break;
-                case 'full':
-                    $size = $model == 'dall-e-3' ? '1792x1024' : '1024x1024';
-                    break;
-                default:
-                    $size = $model == 'dall-e-3' ? '1024x1024' : '256x256';
-                    break;
-            }
+            $driver->redirectIfNoCreditBalance();
+
+            $size = match ($size) {
+                'small' => $defaultModel === EntityEnum::DALL_E_3->value ? '1024x1792' : '512x512',
+                'large', 'full', 'medium' => $defaultModel === EntityEnum::DALL_E_3->value ? '1792x1024' : '1024x1024',
+                default => $defaultModel === EntityEnum::DALL_E_3->value ? '1024x1024' : '256x256',
+            };
             for ($i = 0; $i < $count; $i++) {
-                if ($prompt == null) {
-                    return response()->json(['status' => 'error', 'message' => 'You must provide a prompt']);
-                }
-                $quality = 'standard';
                 $response = OpenAI::images()->create([
-                    'model' => $model,
-                    'prompt' => $prompt,
-                    'size' => $size,
+                    'model'           => $defaultModel,
+                    'prompt'          => $prompt,
+                    'size'            => $size,
                     'response_format' => 'b64_json',
-                    'quality' => 'standard',
-                    'n' => 1,
+                    'quality'         => 'standard',
+                    'n'               => 1,
                 ]);
                 $image_url = $response['data'][0]['b64_json'];
                 $contents = base64_decode($image_url);
 
-                $nameOfImage = Str::random(12).'.png';
+                $nameOfImage = Str::random(12) . '.png';
                 Storage::disk('public')->put($nameOfImage, $contents);
-                $path = 'uploads/'.$nameOfImage;
+                $path = 'uploads/' . $nameOfImage;
 
-                if ($image_storage == self::STORAGE_S3) {
+                if ($image_storage === self::STORAGE_S3) {
                     try {
                         $uploadedFile = new File($path);
                         $aws_path = Storage::disk('s3')->put('', $uploadedFile);
                         unlink($path);
                         $path = Storage::disk('s3')->url($aws_path);
-                    } catch (\Exception $e) {
-                        return response()->json(['status' => 'error', 'message' => 'AWS Error - '.$e->getMessage()]);
+                    } catch (Exception $e) {
+                        return response()->json(['status' => 'error', 'message' => 'AWS Error - ' . $e->getMessage()]);
                     }
-                } elseif ($image_storage == self::CLOUDFLARE_R2) {
+                } elseif ($image_storage === self::CLOUDFLARE_R2) {
                     Storage::disk('r2')->put($nameOfImage, $contents);
                     unlink($path);
                     $path = Storage::disk('r2')->url($nameOfImage);
@@ -702,93 +581,77 @@ class AIArticleWizardController extends Controller
                     $path = "/$path";
                 }
 
-                array_push($paths, $path);
-                userCreditDecreaseForImage($user, 1, $model);
+                $paths[] = $path;
             }
-
+            $driver->decreaseCredit();
             Cache::lock($lockKey)->release();
+        } catch (Exception $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
         } finally {
             Cache::lock($lockKey)->forceRelease();
         }
     }
 
-    private function getImagesFromStableDiffusion($prompt, $count, $size, &$paths)
+    /**
+     * @throws GuzzleException
+     * @throws RandomException
+     */
+    private function getImagesFromStableDiffusion($defaultModel, $prompt, $count, $size, &$paths)
     {
-        $user = Auth::user();
+        $driver = Entity::driver($defaultModel)->inputImageCount($count)->calculateCredit();
+        $driver->redirectIfNoCreditBalance();
+
         $count = 1;
         $settings = $this->settings_two;
         $image_storage = $this->settings_two->ai_image_storage;
-        $setting = $this->settings;
 
-        switch ($size) {
-            case 'thumb':
-                $size = '640x1536';
-                break;
-            case 'small':
-                $size = '768x1344';
-                break;
-            case 'medium':
-                $size = '832x1216';
-                break;
-            case 'large':
-                $size = '896x1152';
-                break;
-            case 'full':
-                $size = '1024x1024';
-                break;
-            case 'raw':
-                $size = '1152x896';
-                break;
-            default:
-                $size = '1024x1024';
-                break;
-        }
+        $size = match ($size) {
+            'thumb'  => '640x1536',
+            'small'  => '768x1344',
+            'medium' => '832x1216',
+            'large'  => '896x1152',
+            'raw'    => '1152x896',
+            default  => '1024x1024',
+        };
 
-        $stablediffusionKeys = explode(',', $settings->stable_diffusion_api_key);
-        $stablediffusionKey = $stablediffusionKeys[array_rand($stablediffusionKeys)];
+        $stablediffusionKey = $this->getStableApiKey();
         for ($i = 0; $i < $count; $i++) {
-
-            if ($prompt == null) {
+            if (empty($prompt)) {
                 return response()->json(['status' => 'error', 'message' => 'You must provide a prompt']);
             }
 
-            $width = intval(explode('x', $size)[0]);
-            $height = intval(explode('x', $size)[1]);
+            $width = (int) explode('x', $size)[0];
+            $height = (int) explode('x', $size)[1];
 
-            if ($settings->stablediffusion_default_model === BedrockEngine::BEDROCK->value){
+            if ($settings->stablediffusion_default_model === BedrockEngine::BEDROCK->value) {
                 $path = $this->bedrockService->invokeStableDiffusion(
-                    $prompt,random_int(1, 1000000),$width,$height);
-
-                array_push($paths, $path);
-                userCreditDecreaseForImage($user, 1);
-
-            }else {
-
-                if ($stablediffusionKey == '') {
+                    $prompt, random_int(1, 1000000), $width, $height);
+                $paths[] = $path;
+            } else {
+                if (empty($stablediffusionKey)) {
                     return response()->json(['status' => 'error', 'message' => 'You must provide a StableDiffusion API Key.']);
                 }
 
                 // Stablediffusion engine
                 $engine = $this->settings_two->stablediffusion_default_model;
+                $isV2BetaModels = EntityEnum::fromSlug($engine)->isV2BetaSdEntity();
 
-                $sd3Payload = [];
-                if ($engine == 'sd3' || $engine == 'sd3-turbo') {
+                if ($isV2BetaModels) {
                     $client = new Client([
                         'base_uri' => 'https://api.stability.ai/v2beta/stable-image/generate/',
-                        'headers' => [
-                            'content-type' => 'multipart/form-data',
-                            'Authorization' => 'Bearer '.$stablediffusionKey,
-                            'accept' => 'application/json',
+                        'headers'  => [
+                            'content-type'  => 'multipart/form-data',
+                            'Authorization' => 'Bearer ' . $stablediffusionKey,
+                            'accept'        => 'application/json',
                         ],
                     ]);
                 } else {
-                    $engine = 'stable-diffusion-xl-beta-v2-2-2';
                     $client = new Client([
                         'base_uri' => 'https://api.stability.ai/v1/generation/',
-                        'headers' => [
-                            'content-type' => 'application/json',
-                            'Authorization' => 'Bearer '.$stablediffusionKey,
-                            'accept' => 'application/json',
+                        'headers'  => [
+                            'content-type'  => 'application/json',
+                            'Authorization' => 'Bearer ' . $stablediffusionKey,
+                            'accept'        => 'application/json',
                         ],
                     ]);
                 }
@@ -797,10 +660,10 @@ class AIArticleWizardController extends Controller
                 $content_type = 'json';
 
                 $payload = [
-                    'cfg_scale' => 7,
+                    'cfg_scale'            => 7,
                     'clip_guidance_preset' => 'NONE',
-                    'samples' => 1,
-                    'steps' => 50,
+                    'samples'              => 1,
+                    'steps'                => 50,
                 ];
 
                 $stable_url = 'text-to-image';
@@ -808,28 +671,38 @@ class AIArticleWizardController extends Controller
                 // $payload['height'] = $height;
                 $sd3Payload = [
                     [
-                        'name' => 'prompt',
+                        'name'     => 'prompt',
                         'contents' => $prompt,
                     ],
                     [
-                        'name' => 'file',
+                        'name'     => 'file',
                         'contents' => 'no',
                     ],
                     [
-                        'name' => 'output_format',
+                        'name'     => 'output_format',
                         'contents' => 'png',
                     ],
                 ];
+
+                $validEngines = [EntityEnum::SD_3->value, EntityEnum::SD_3_TURBO->value, EntityEnum::SD_3_MEDIUM->value, EntityEnum::SD_3_LARGE->value, EntityEnum::SD_3_LARGE_TURBO->value];
+                if (in_array($engine, $validEngines, true)) {
+                    $engine = 'sd3';
+                    $sd3Payload[] = [
+                        'name'     => 'model',
+                        'contents' => $engine,
+                    ];
+                }
                 $prompt = [
                     [
-                        'text' => $prompt,
+                        'text'   => $prompt,
                         'weight' => 1,
                     ],
                 ];
                 $payload['text_prompts'] = $prompt;
+
                 try {
-                    if ($engine == 'sd3' || $engine == 'sd3-turbo') {
-                        $response = $client->post("$engine", [
+                    if ($isV2BetaModels) {
+                        $response = $client->post((string) $engine, [
                             'headers' => [
                                 'accept' => 'application/json',
                             ],
@@ -864,28 +737,26 @@ class AIArticleWizardController extends Controller
                 }
 
                 $body = $response->getBody();
-
                 if ($response->getStatusCode() == 200) {
-                    $nameOfImage = Str::random(12).'.png';
+                    $nameOfImage = Str::random(12) . '.png';
 
-                    if ($engine == 'sd3' || $engine == 'sd3-turbo') {
+                    if ($isV2BetaModels) {
                         $contents = base64_decode(json_decode($body)->image);
                     } else {
                         $contents = base64_decode(json_decode($body)->artifacts[0]->base64);
                     }
-
                     Storage::disk('public')->put($nameOfImage, $contents);
-                    $path = 'uploads/'.$nameOfImage;
-                    if ($image_storage == self::STORAGE_S3) {
+                    $path = 'uploads/' . $nameOfImage;
+                    if ($image_storage === self::STORAGE_S3) {
                         try {
                             $uploadedFile = new File($path);
                             $aws_path = Storage::disk('s3')->put('', $uploadedFile);
                             unlink($path);
                             $path = Storage::disk('s3')->url($aws_path);
-                        } catch (\Exception $e) {
-                            return response()->json(['status' => 'error', 'message' => 'AWS Error - '.$e->getMessage()]);
+                        } catch (Exception $e) {
+                            return response()->json(['status' => 'error', 'message' => 'AWS Error - ' . $e->getMessage()]);
                         }
-                    } elseif ($image_storage == self::CLOUDFLARE_R2) {
+                    } elseif ($image_storage === self::CLOUDFLARE_R2) {
                         Storage::disk('r2')->put($nameOfImage, $contents);
                         unlink($path);
                         $path = Storage::disk('r2')->url($nameOfImage);
@@ -893,8 +764,7 @@ class AIArticleWizardController extends Controller
                         $path = "/$path";
                     }
 
-                    array_push($paths, $path);
-                    userCreditDecreaseForImage($user, 1, $engine);
+                    $paths[] = $path;
                 } else {
                     $message = '';
                     if ($body->status == 'error') {
@@ -906,15 +776,76 @@ class AIArticleWizardController extends Controller
                     return response()->json(['status' => 'error', 'message' => $message]);
                 }
             }
+        }
+        $driver->decreaseCredit();
+    }
 
+    private function getImagesFromUnsplash($defaultModel, $prompt, $count, $size, &$paths): void
+    {
+        $driver = Entity::driver($defaultModel)->inputImageCount($count)->calculateCredit();
+        $driver->redirectIfNoCreditBalance();
+
+        $settings = $this->settings_two;
+        $image_storage = $this->settings_two->ai_image_storage;
+        $client = new Client;
+        $apiKey = $settings->unsplash_api_key;
+        $url = "https://api.unsplash.com/search/photos?query=$prompt&count=$count&client_id=$apiKey&orientation=landscape";
+        $response = $client->request('GET', $url, [
+            'headers' => [
+                'Accept' => 'application/json',
+            ],
+        ]);
+        $statusCode = $response->getStatusCode();
+        $content = $response->getBody();
+        if ($statusCode == 200) {
+            $images = json_decode($content)->results;
+
+            foreach ($images as $index => $image) {
+                $image_url = $image->urls->$size;
+                $imageContent = file_get_contents($image_url);
+                $nameOfImage = Str::random(12) . '.png';
+
+                Storage::disk('public')->put($nameOfImage, $imageContent);
+                $path = 'uploads/' . $nameOfImage;
+
+                if ($image_storage === self::STORAGE_S3) {
+                    try {
+                        $uploadedFile = new File($path);
+                        $aws_path = Storage::disk('s3')->put('', $uploadedFile);
+                        unlink($path);
+                        $path = Storage::disk('s3')->url($aws_path);
+                    } catch (Exception $e) {
+                        response()->json(['status' => 'error', 'message' => 'AWS Error - ' . $e->getMessage()]);
+
+                        return;
+                    }
+                } else {
+                    $path = "/$path";
+                }
+
+                $paths[] = $path;
+                $count--;
+                if ($count === 0) {
+                    break;
+                }
+            }
+            $driver->decreaseCredit();
+        } else {
+            response()->json([
+                'status'  => 'error',
+                'message' => __('Failed to download images.'),
+            ], 500);
         }
     }
 
     // | not rec
     public function updateArticle(Request $request)
     {
-        $user = Auth::user();
         try {
+            $defaultModel = $this->getDefaultOpenAiWordModel();
+            $driver = Entity::driver($defaultModel);
+            $driver->redirectIfNoCreditBalance();
+
             $data = $request->getContent();
             $decodedData = json_decode($data);
 
@@ -974,9 +905,10 @@ class AIArticleWizardController extends Controller
 
             if ($decodedData->type == 'TOKENS') {
                 $total_used_tokens = $decodedData->tokens;
-                $user = Auth::user();
-
-                userCreditDecreaseForWord($user, $total_used_tokens, $this->settings->openai_default_model);
+                $responsedText = generateRandomWords($total_used_tokens);
+                $driver->input($responsedText)
+                    ->calculateCredit()
+                    ->decreaseCredit();
             }
 
             if ($decodedData->type == 'RESULT') {
@@ -986,9 +918,9 @@ class AIArticleWizardController extends Controller
 
                 $post = OpenAIGenerator::where('slug', 'ai_article_wizard_generator')->first();
 
-                $entry = new UserOpenai();
+                $entry = new UserOpenai;
                 $entry->title = $wizard->title;
-                $entry->slug = str()->random(7).str($user->fullName())->slug().'-workbook';
+                $entry->slug = str()->random(7) . str($user->fullName())->slug() . '-workbook';
                 $entry->user_id = Auth::id();
                 $entry->openai_id = $post->id;
                 $entry->input = "Write Article in $wizard-> language. Generate article about $wizard->title with must following outline $request->outline.  Please write only article.";
@@ -999,18 +931,16 @@ class AIArticleWizardController extends Controller
                 $entry->storage = $this->settings_two->ai_image_storage;
                 $entry->response = json_decode($wizard->image);
 
-                if ($user->remaining_words != -1) {
-
-                    userCreditDecreaseForWord($user, countWords($decodedData->result), $this->settings->openai_default_model);
-
-                }
-
+                $driver
+                    ->input($decodedData->result)
+                    ->calculateCredit()
+                    ->decreaseCredit();
                 $entry->save();
             }
 
             $wizard->save();
 
-            return response()->json(['result' => 'success', 'remain_words' => (string) $user->remaining_words, 'remain_images' => (string) $user->remaining_images]);
+            return response()->json(['result' => 'success', 'remain_words' => (string) EntityStats::word()->totalCredits(), 'remain_images' => (string) EntityStats::image()->totalCredits()]);
         } catch (Exception $e) {
             return response()->json([
                 'message' => $e->getMessage(),
@@ -1024,5 +954,38 @@ class AIArticleWizardController extends Controller
         ArticleWizard::where('user_id', $user->id)->delete();
 
         return response()->json(['result' => 'success']);
+    }
+
+    private function getDefaultImageModelFromImageEngine(string $defaultEngine): EntityEnum
+    {
+        return match ($defaultEngine) {
+            EngineEnum::PEXELS->value                     => EntityEnum::PEXELS,
+            EngineEnum::PIXABAY->value                    => EntityEnum::PIXABAY,
+            EngineEnum::OPEN_AI->value                    => $this->getDefaultOpenAiImageModel(),
+            'sd', EngineEnum::STABLE_DIFFUSION->value     => $this->getStableDiffusionDefaultModel(),
+            default                                     => EntityEnum::UNSPLASH,
+        };
+    }
+
+    private function getDefaultOpenAiWordModel(): EntityEnum
+    {
+        return EntityEnum::fromSlug($this->settings?->openai_default_model) ?? EntityEnum::GPT_4_O;
+    }
+
+    private function getDefaultOpenAiImageModel(): EntityEnum
+    {
+        return EntityEnum::fromSlug($this->settings_two?->dalle) ?? EntityEnum::DALL_E_2;
+    }
+
+    private function getStableDiffusionDefaultModel(): EntityEnum
+    {
+        return EntityEnum::fromSlug($this->settings_two?->stablediffusion_default_model) ?? EntityEnum::SD_3;
+    }
+
+    private function getStableApiKey(): string
+    {
+        $stableDiffusionKeys = explode(',', $this->settings_two->stable_diffusion_api_key);
+
+        return $stableDiffusionKeys[array_rand($stableDiffusionKeys)];
     }
 }

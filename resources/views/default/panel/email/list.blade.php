@@ -1,16 +1,11 @@
 @extends('panel.layout.app', ['disable_tblr' => true])
 @section('title', __('Email Templates'))
 @section('titlebar_actions')
-    @if ($installedExtension)
-        @php
-            try {
-                $localizedUrl = LaravelLocalization::localizeUrl(route('dashboard.newsletter.new'));
-            } catch (\Exception $e) {
-                $localizedUrl = '';
-            }
-        @endphp
+    @if(\Illuminate\Support\Facades\View::exists('news-letter::add-new-button'))
+        @include('news-letter::add-new-button')
+    @elseif($installedExtension)
         <x-button
-            href="{{ $app_is_demo ? '#' : $localizedUrl }}"
+            href="{{ $app_is_demo ? '#' : LaravelLocalization::localizeUrl(route('dashboard.newsletter.new')) }}"
             onclick="{{ $app_is_demo ? 'return toastr.info(\'This feature is disabled in Demo version.\')' : '' }}"
             variant="primary"
         >

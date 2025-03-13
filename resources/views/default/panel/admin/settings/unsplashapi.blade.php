@@ -1,6 +1,8 @@
 @extends('panel.layout.settings')
 @section('title', __('Unsplash API Settings'))
 @section('titlebar_actions', '')
+@section('titlebar_subtitle', __('This API key is used for these features: AI Article Wizard'))
+
 @section('additional_css')
     <link
         href="{{ custom_theme_url('/assets/libs/select2/select2.min.css') }}"
@@ -14,13 +16,13 @@
         onsubmit="return unsplashSettingsSave();"
         enctype="multipart/form-data"
     >
-        <h3 class="mb-[25px] text-[20px]">{{ __('Unsplash API Settings') }}</h3>
+        <h3 class="mb-[25px] text-[20px]">{{ __(\App\Domains\Engine\Enums\EngineEnum::UNSPLASH->label().' API Settings') }}</h3>
         <div class="row">
             <!-- TODO Unsplash api key -->
             @if ($app_is_demo)
                 <div class="col-md-12">
                     <div class="mb-3">
-                        <label class="form-label">{{ __('Unsplash API Key') }}</label>
+                        <label class="form-label">{{ __(':label API Key', ['label' => \App\Domains\Engine\Enums\EngineEnum::UNSPLASH->label()]) }}</label>
                         <input
                             class="form-control"
                             id="unsplash_api_key"
@@ -34,7 +36,17 @@
                 <div class="col-md-12">
                     <div
                         class="form-control mb-3 border-none p-0 [&_.select2-selection--multiple]:!rounded-[--tblr-border-radius] [&_.select2-selection--multiple]:!border-[--tblr-border-color] [&_.select2-selection--multiple]:!p-[1em_1.23em]">
-                        <label class="form-label">{{ __('Unsplash API Key') }}</label>
+                        <label class="form-label">{{ __(':label API Key', ['label' => \App\Domains\Engine\Enums\EngineEnum::UNSPLASH->label()]) }}
+                            <x-alert class="mt-2">
+                                <x-button
+                                    variant="link"
+                                    href="https://unsplash.com/documentation#creating-a-developer-account"
+                                    target="_blank"
+                                >
+                                    {{ __('Get an API key') }}
+                                </x-button>
+                            </x-alert>
+                        </label>
                         <input
                             class="form-control"
                             id="unsplash_api_key"

@@ -2,6 +2,7 @@
 
 namespace RachidLaasri\LaravelInstaller\Controllers;
 
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Controller;
 use RachidLaasri\LaravelInstaller\Helpers\DatabaseManager;
 
@@ -12,9 +13,6 @@ class DatabaseController extends Controller
      */
     private $databaseManager;
 
-    /**
-     * @param DatabaseManager $databaseManager
-     */
     public function __construct(DatabaseManager $databaseManager)
     {
         $this->databaseManager = $databaseManager;
@@ -22,10 +20,8 @@ class DatabaseController extends Controller
 
     /**
      * Migrate and seed the database.
-     *
-     * @return \Illuminate\View\View
      */
-    public function database()
+    public function database(): RedirectResponse
     {
         $response = $this->databaseManager->migrateAndSeed();
 

@@ -124,19 +124,24 @@
                     inputData.push(value);
                 });
 
-                var jsonData = JSON.stringify(inputData);
-                formData.append('data', jsonData);
-                formData.append('lang', $(this).data('lang'));
+                // var jsonData = JSON.stringify(inputData);
+                // formData.append('data', jsonData);
+                // formData.append('lang', $(this).data('lang'));
 
                 $.ajax({
                     type: "post",
                     headers: {
+						'Accept': 'application/json',
                         'X-CSRF-TOKEN': "{{ csrf_token() }}",
                     },
                     url: "/translations/lang/update-all",
-                    data: formData,
-                    contentType: false,
-                    processData: false,
+                    data: {
+						_token: "{{ csrf_token() }}",
+						json: inputData,
+						lang: $(this).data('lang'),
+					},
+                    // contentType: false,
+                    // processData: false,
                     success: function(data) {
                         toastr.success("{{ __('Strings saved successfully') }}");
                         document.getElementById("save_all").disabled = false;

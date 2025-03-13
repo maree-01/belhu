@@ -57,7 +57,7 @@
                                     data-bs-toggle="{{ $app_is_demo ? '' : 'modal' }}"
                                     data-bs-target="{{ $app_is_demo ? '' : '#confirmationModal' }}"
                                     variant="secondary"
-                                    type="{{ $app_is_demo ? 'button' : 'submit' }}"
+                                    type="button"
                                     onclick="{{ $app_is_demo ? 'return toastr.info(\'This feature is disabled in Demo version.\')' : '' }}"
                                 >
                                     <div

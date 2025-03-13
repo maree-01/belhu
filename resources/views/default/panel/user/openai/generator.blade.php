@@ -10,8 +10,8 @@
             @include('panel.user.openai.components.generator_video')
         @elseif($openai->type == 'voiceover')
             @include('panel.user.openai.components.generator_voiceover')
-        @elseif($openai->type == 'isolator')
-            @include('panel.user.openai.components.generator_voice_isolator')
+        @elseif($openai->type == \App\Domains\Entity\Enums\EntityEnum::ISOLATOR->value)
+            @includeFirst(['ai-voice-isolator::generator_voice_isolator', 'panel.user.openai.components.generator_voice_isolator', 'vendor.empty'])
         @else
             @include('panel.user.openai.components.generator_others')
         @endif
@@ -29,7 +29,7 @@
     <script src="{{ custom_theme_url('/assets/js/panel/tinymce-theme-handler.js') }}"></script>
     <script src="{{ custom_theme_url('/assets/js/panel/voiceover.js') }}"></script>
 
-    @if ($openai->type == 'voiceover' || $openai->type == 'isolator')
+    @if ($openai->type == 'voiceover' || $openai->type == \App\Domains\Entity\Enums\EntityEnum::ISOLATOR->value)
         <script>
             function generateSpeech() {
                 "use strict";
@@ -224,182 +224,17 @@
             ];
 
 
-            const elevenLabsVoices = [{
-                    "voice_id": "21m00Tcm4TlvDq8ikWAM",
-                    "name": "Rachel",
-                },
-                {
-                    "voice_id": "29vD33N1CtxCmqQRPOHJ",
-                    "name": "Drew",
-                },
-                {
-                    "voice_id": "2EiwWnXFnvU5JabPnv8n",
-                    "name": "Clyde",
-                },
-                {
-                    "voice_id": "5Q0t7uMcjvnagumLfvZi",
-                    "name": "Paul",
-                },
-                {
-                    "voice_id": "AZnzlk1XvdvUeBnXmlld",
-                    "name": "Domi",
-                },
-                {
-                    "voice_id": "CYw3kZ02Hs0563khs1Fj",
-                    "name": "Dave",
-                },
-                {
-                    "voice_id": "D38z5RcWu1voky8WS1ja",
-                    "name": "Fin",
-                },
-                {
-                    "voice_id": "EXAVITQu4vr4xnSDxMaL",
-                    "name": "Sarah",
-                },
-                {
-                    "voice_id": "ErXwobaYiN019PkySvjV",
-                    "name": "Antoni",
-                },
-                {
-                    "voice_id": "GBv7mTt0atIp3Br8iCZE",
-                    "name": "Thomas",
-                },
-                {
-                    "voice_id": "IKne3meq5aSn9XLyUdCD",
-                    "name": "Charlie",
-                },
-                {
-                    "voice_id": "JBFqnCBsd6RMkjVDRZzb",
-                    "name": "George",
-                },
-                {
-                    "voice_id": "LcfcDJNUP1GQjkzn1xUU",
-                    "name": "Emily",
-                },
-                {
-                    "voice_id": "MF3mGyEYCl7XYWbV9V6O",
-                    "name": "Elli",
-                },
-                {
-                    "voice_id": "N2lVS1w4EtoT3dr4eOWO",
-                    "name": "Callum",
-                },
-                {
-                    "voice_id": "ODq5zmih8GrVes37Dizd",
-                    "name": "Patrick",
-                },
-                {
-                    "voice_id": "SOYHLrjzK2X1ezoPC6cr",
-                    "name": "Harry",
-                },
-                {
-                    "voice_id": "TX3LPaxmHKxFdv7VOQHJ",
-                    "name": "Liam",
-                },
-                {
-                    "voice_id": "ThT5KcBeYPX3keUQqHPh",
-                    "name": "Dorothy",
-                },
-                {
-                    "voice_id": "TxGEqnHWrfWFTfGW9XjX",
-                    "name": "Josh",
-                },
-                {
-                    "voice_id": "VR6AewLTigWG4xSOukaG",
-                    "name": "Arnold",
-                },
-                {
-                    "voice_id": "XB0fDUnXU5powFXDhCwa",
-                    "name": "Charlotte",
-                },
-                {
-                    "voice_id": "XrExE9yKIg1WjnnlVkGX",
-                    "name": "Matilda",
-                },
-                {
-                    "voice_id": "Yko7PKHZNXotIFUBG7I9",
-                    "name": "Matthew",
-                },
-                {
-                    "voice_id": "ZQe5CZNOzWyzPSCn5a3c",
-                    "name": "James",
-                },
-                {
-                    "voice_id": "Zlb1dXrM653N07WRdFW3",
-                    "name": "Joseph",
-                },
-                {
-                    "voice_id": "bVMeCyTHy58xNoL34h3p",
-                    "name": "Jeremy",
-                },
-                {
-                    "voice_id": "flq6f7yk4E4fJM5XTYuZ",
-                    "name": "Michael",
-                },
-                {
-                    "voice_id": "g5CIjZEefAph4nQFvHAz",
-                    "name": "Ethan",
-                },
-                {
-                    "voice_id": "jBpfuIE2acCO8z3wKNLl",
-                    "name": "Gigi",
-                },
-                {
-                    "voice_id": "jsCqWAovK2LkecY7zXl4",
-                    "name": "Freya",
-                },
-                {
-                    "voice_id": "knrPHWnBmmDHMoiMeP3l",
-                    "name": "🎅 Santa",
-                },
-                {
-                    "voice_id": "oWAxZDx7w5VEj9dCyTzz",
-                    "name": "Grace",
-                },
-                {
-                    "voice_id": "onwK4e9ZLuTAKqWW03F9",
-                    "name": "Daniel",
-                },
-                {
-                    "voice_id": "pFZP5JQG7iQjIQuC4Bku",
-                    "name": "Lily",
-                },
-                {
-                    "voice_id": "pMsXgVXv3BLzUgSXRplE",
-                    "name": "Serena",
-                },
-                {
-                    "voice_id": "pNInz6obpgDQGcFmaJgB",
-                    "name": "Adam",
-                },
-                {
-                    "voice_id": "piTKgcLEGmPE4e6mEKli",
-                    "name": "Nicole",
-                },
-                {
-                    "voice_id": "pqHfZKP75CvOlQylNhV4",
-                    "name": "Bill",
-                },
-                {
-                    "voice_id": "t0jbNlBVZ17f02VDIeMI",
-                    "name": "Jessie",
-                },
-                {
-                    "voice_id": "yoZ06aMxZJJ28mfd3POQ",
-                    "name": "Sam",
-                },
-                {
-                    "voice_id": "z9fAnlkpzviPz146aGWa",
-                    "name": "Glinda",
-                },
-                {
-                    "voice_id": "zcAOhNBS3c14rBihAFp1",
-                    "name": "Giovanni",
-                },
-                {
-                    "voice_id": "zrHiDhphv9ZnVXBqCLjz",
-                    "name": "Mimi",
-                },
+            const elevenLabsVoices = [
+                @if ($elevenlabServiceVoice !== [])
+                    @foreach ($elevenlabServiceVoice as $voice)
+                        {
+                            "voice_id": "{{ $voice['voice_id'] }}",
+                            "name": "{{ $voice['name'] }}",
+                            "preview_url": "{{ $voice['preview_url'] }}",
+                        },
+                    @endforeach
+                @endif
+
                 @if ($elevenlabs)
                     @foreach ($elevenlabs as $voice)
                         {
@@ -4118,14 +3953,32 @@
                         }
 
                         if (@json($settings_two->feature_tts_elevenlabs) == true) {
+                            const playButton = $('#playVoiceButton');
                             if (allowedElevenLabsList.includes(selectedLanguage)) {
                                 elevenLabsVoices.forEach(option => {
                                     $("<option></option>")
                                         .val(option.voice_id)
                                         .text(option.name)
-                                        .attr('name', option.name + (" (ElevenLabs)"))
-                                        .attr('platform', "elevenlabs")
+                                        .attr('name', option.name + (" ({{ \App\Domains\Engine\Enums\EngineEnum::ELEVENLABS->label() }})"))
+                                        .attr('platform', "{{ \App\Domains\Engine\Enums\EngineEnum::ELEVENLABS->value }}")
                                         .appendTo(voiceSelect);
+                                });
+
+                                voiceSelect.on('change', function() {
+                                    const selectedOption = $(this).find('option:selected');
+                                    const selectedVoiceId = selectedOption.val();
+                                    const selectedVoice = elevenLabsVoices.find(voice => voice.voice_id === selectedVoiceId);
+
+                                    if (selectedVoice && selectedVoice.preview_url) {
+                                        playButton.show();
+                                        playButton.off('click');
+                                        playButton.on('click', function() {
+                                            const audio = new Audio(selectedVoice.preview_url);
+                                            audio.play();
+                                        });
+                                    } else {
+                                        playButton.hide();
+                                    }
                                 });
                             }
                         }
@@ -4154,14 +4007,14 @@
                                 $("<option></option>")
                                     .val(option.voice_id)
                                     .text(option.name)
-                                    .attr('name', option.name + (" (ElevenLabs)"))
-                                    .attr('platform', "elevenlabs")
+                                    .attr('name', option.name + (" ({{ \App\Domains\Engine\Enums\EngineEnum::ELEVENLABS->label() }})"))
+                                    .attr('platform', "{{ \App\Domains\Engine\Enums\EngineEnum::ELEVENLABS->value }}")
                                     .appendTo(voiceSelect);
                             });
                         }
                     }
 
-                    @includeIf('default.panel.user.openai.components.feature_tts_azure')
+                    @includeFirst(['azure-tts::feature_tts_azure', 'default.panel.user.openai.components.feature_tts_azure', 'vendor.empty'])
                 }
 
                 function populatePaceSelect() {
@@ -4184,10 +4037,10 @@
                     }, ];
 
                     const selectedOptions_openai = [{
-                        value: "tts-1",
+                        value: "{{ \App\Domains\Entity\Enums\EntityEnum::TTS_1->value }}",
                         label: "Normal"
                     }, {
-                        value: "tts-1-hd",
+                        value: "{{ \App\Domains\Entity\Enums\EntityEnum::TTS_1_HD->value }}",
                         label: "Neural"
                     }];
 
@@ -4224,13 +4077,13 @@
                                 .attr('platform', "openai")
                                 .appendTo(paceSelect);
                         });
-                    } else if (selectedPlatform == "elevenlabs") {
+                    } else if (selectedPlatform == "{{ \App\Domains\Engine\Enums\EngineEnum::ELEVENLABS->value }}") {
                         $("#break").parent().addClass('hidden');
                         selectedOptions_elevenlabs.forEach(option => {
                             $("<option></option>")
                                 .val(option.value)
                                 .text(option.label)
-                                .attr('platform', "elevenlabs")
+                                .attr('platform', "{{ \App\Domains\Engine\Enums\EngineEnum::ELEVENLABS->value }}")
                                 .appendTo(paceSelect);
                         });
                     }
@@ -4261,7 +4114,7 @@
 
                     speechTemplateLang.innerText = country2flag(selectedLang);
                     speechTemplateVoice.innerText = selectedVoiceText;
-                    selectedPlatform === 'elevenlabs' && speechTemplateTextarea.setAttribute('name',
+                    selectedPlatform === '{{ \App\Domains\Engine\Enums\EngineEnum::ELEVENLABS->value }}' && speechTemplateTextarea.setAttribute('name',
                         selectedVoiceText);
                     speechTemplateTextarea.setAttribute('data-platform', selectedPlatform);
                     speechTemplateTextarea.setAttribute('data-voice', selectedVoice);
@@ -4272,7 +4125,7 @@
                     speechTemplateTextarea.setAttribute('data-modelopenai', selectedModelOpenAI);
                     speechTemplateTextarea.setAttribute('data-voiceopenai', selectedVoiceOpenAI);
 
-                    if (selectedPlatform !== 'elevenlabs' && selectedPlatform !== 'openai') {
+                    if (selectedPlatform !== '{{ \App\Domains\Engine\Enums\EngineEnum::ELEVENLABS->value }}' && selectedPlatform !== 'openai') {
                         const sayAsTemplate = document.querySelector('#speech-say-as-template').content
                             .cloneNode(true);
                         const sayAsEl = sayAsTemplate.querySelector('.say-as');
@@ -4394,6 +4247,8 @@
             href="{{ custom_theme_url('/assets/libs/prism/prism.css') }}"
         >
         <script src="{{ custom_theme_url('/assets/libs/prism/prism.js') }}"></script>
+        <script src="{{ custom_theme_url('/assets/js/format-string.js') }}"></script>
+
         <script>
             document.addEventListener('DOMContentLoaded', (event) => {
                 "use strict";
@@ -4404,12 +4259,10 @@
 
                 if (!codeOutput) return;
 
-                codePre.classList.add(`language-${codeLang && codeLang.value !== '' ? codeLang.value : 'javascript'}`);
-
                 // saving for copy
                 window.codeRaw = codeOutput.innerText;
 
-                Prism.highlightElement(codeOutput);
+                codeOutput.innerHTML = lqdFormatString(codeOutput.textContent);
             });
         </script>
     @endif
@@ -4501,6 +4354,8 @@
         }
 
         function sendOpenaiGeneratorForm(ev) {
+
+
             ev?.preventDefault();
             ev?.stopPropagation();
 
@@ -4541,7 +4396,7 @@
                 formData.append('language', $("#language").val());
             @endif
 
-            @if ($openai->type == 'audio' || $openai->type == 'isolator')
+            @if ($openai->type == 'audio' || $openai->type == \App\Domains\Entity\Enums\EntityEnum::ISOLATOR->value)
                 if ($('#file').prop('files').length == 0) {
                     toastr.warning('Please upload an audio file');
                     hideLoadingIndicators();
@@ -4553,7 +4408,7 @@
             @if ($openai->type == 'image')
                 formData.append('image_generator', imageGenerator);
 
-                if (imageGenerator == 'dall-e') {
+                if (imageGenerator == 'openai') {
                     formData.append('image_style', $("#image_style").val());
                     formData.append('image_lighting', $("#image_lighting").val());
                     formData.append('image_mood', $("#image_mood").val());
@@ -4629,7 +4484,7 @@
 
                     //show successful message
                     @if ($openai->type == 'image')
-                        toastr.success(`Image Generated Successfully in ${res.image_storage}`);
+                        toastr.success(`Image Generated Successfully`);
                     @elseif ($openai->type == 'video')
                         resultVideoId = res.id;
                     @else
@@ -4681,7 +4536,7 @@
                         @elseif ($openai->type == 'video')
                             sourceImgUrl = res.sourceUrl;
                             intervalId = setInterval(checkVideoDone, 10000);
-                        @elseif ($openai->type == 'audio' || $openai->type == 'isolator')
+                        @elseif ($openai->type == 'audio' || $openai->type == \App\Domains\Entity\Enums\EntityEnum::ISOLATOR->value)
                             $("#generator_sidebar_table").html(res?.data?.html2 || res.html2);
                             var audioElements = document.querySelectorAll('.data-audio');
                             if (audioElements.length) {
@@ -4753,4 +4608,5 @@
             return false;
         }
     </script>
+
 @endpush

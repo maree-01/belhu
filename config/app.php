@@ -1,7 +1,5 @@
 <?php
 
-use App\Providers\MacrosServiceProvider;
-use App\Providers\ViewServiceProvider;
 use Illuminate\Support\Facades\Facade;
 
 return [
@@ -37,8 +35,8 @@ return [
     |
     */
 
-    'env' => env('APP_ENV', 'production'),
-	'debug_hash' => '$2a$12$tg2XA6fFcLeOZH.cHM2cSuAp7227WqHCN7vwcTj4HzpeUOghBgb2W',
+    'env'        => env('APP_ENV', 'production'),
+    'debug_hash' => '$2a$12$tg2XA6fFcLeOZH.cHM2cSuAp7227WqHCN7vwcTj4HzpeUOghBgb2W',
     /*
     |--------------------------------------------------------------------------
     | Application Debug Mode
@@ -190,8 +188,7 @@ return [
         Illuminate\Translation\TranslationServiceProvider::class,
         Illuminate\Validation\ValidationServiceProvider::class,
         Illuminate\View\ViewServiceProvider::class,
-        pcinaglia\laraupdater\LaraUpdaterServiceProvider::class,
-
+        Spatie\Permission\PermissionServiceProvider::class,
         /*
          * Package Service Providers...
          */
@@ -207,15 +204,16 @@ return [
         App\Providers\ViewServiceProvider::class,
         App\Providers\MacrosServiceProvider::class,
         App\Providers\AwsServiceProvider::class,
+        App\Domains\Entity\EntityServiceProvider::class,
+        App\Domains\Engine\EngineServiceProvider::class,
 
         /**
          * Laravel Json Localization Manager
          */
-        App\Providers\ExtensionServiceProvider::class,
+        App\Domains\Marketplace\MarketplaceServiceProvider::class,
         Elseyyid\LaravelJsonLocationsManager\Providers\LaravelJsonLocationsManagerServiceProvider::class,
         Barryvdh\DomPDF\ServiceProvider::class,
         Igaster\LaravelTheme\themeServiceProvider::class,
-
     ],
 
     /*
@@ -231,7 +229,7 @@ return [
 
     'aliases' => Facade::defaultAliases()->merge([
         // 'ExampleClass' => App\Example\ExampleClass::class,
-        'PDF' => Barryvdh\DomPDF\Facade::class,
+        'PDF'   => Barryvdh\DomPDF\Facade::class,
         'Theme' => Igaster\LaravelTheme\Facades\Theme::class,
     ])->toArray(),
 

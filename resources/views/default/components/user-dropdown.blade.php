@@ -23,14 +23,20 @@
     <x-slot:dropdown
         class="min-w-52"
     >
-        <div class="px-3 pt-3 text-foreground/70">
-            <p>{{ Auth::user()->fullName() }}</p>
-            <p class="text-3xs">{{ Auth::user()->email }}</p>
+        <div class="px-3 pt-3">
+            <p class="m-0 text-foreground">{{ Auth::user()->fullName() }}</p>
+            <p class="text-3xs text-foreground/70">{{ Auth::user()->email }}</p>
         </div>
 
         <hr>
 
-        <x-remaining-credit class="flex-col-reverse px-3 py-1.5 text-2xs" />
+        <x-credit-list
+            class:legends="gap-1"
+            class:modal-trigger="text-2xs w-full"
+            modal-trigger-variant="ghost-shadow"
+            modal-trigger-pos="block"
+            expanded-modal-trigger
+        />
 
         <hr>
 

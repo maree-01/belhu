@@ -334,7 +334,7 @@
                 data-view-mode="grid"
             >
                 <div class="lqd-docs-list grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
-                    @foreach (Auth::user()->openai()->orderBy('updated_at', 'desc')->take(5)->get() as $entry)
+                    @foreach ($recently_launched as $entry)
                         @if ($entry->generator != null)
                             <x-documents.item
                                 :$entry
@@ -444,33 +444,12 @@
 @endsection
 
 @push('script')
+@includeFirst([
+    'introduction::include.introduction',
+    'panel.admin.introduction.include.introduction',
+    'vendor.empty'
+])
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-
-        if (window.innerWidth >= 768) {
-            const steps = @json(\App\Models\Introduction::getFormattedSteps());
-
-            @if (auth()->user()->tour_seen == 0 && \App\Models\Setting::first()->tour_seen == 1)
-                introJs().setOptions({
-                    showBullets: false,
-                    steps: steps.map(step => {
-                        step.element = document.querySelector(step.element);
-                        return step;
-                    })
-                }).oncomplete(function() {
-                    fetch('/dashboard/user/mark-tour-seen', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        },
-                        body: JSON.stringify({})
-                    });
-                }).start();
-            @endif
-        }
-    });
-
     function dismiss() {
         // localStorage.setItem('lqd-announcement-dismissed', true);
         document.querySelector('.lqd-announcement').style.display = 'none';

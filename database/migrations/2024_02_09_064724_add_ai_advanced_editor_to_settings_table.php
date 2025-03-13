@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('settings', function (Blueprint $table) {
-            $table->boolean('feature_ai_advanced_editor')->after('team_functionality')->default(false);
+            $table->boolean('feature_ai_advanced_editor')->after('team_functionality')->default(true);
         });
     }
 

@@ -50,7 +50,7 @@
                 @endphp
                 <x-form-step
                     step="{{ $index }}"
-                    label="{{ ucfirst($formattedCategory) }}"
+                    label="{{ str_replace(['ai', 'Ai', 'Aİ'], 'AI', ucfirst($formattedCategory)) }}"
                 />
 
                 @foreach ($groupedAiModel as $aiModel)
@@ -63,9 +63,9 @@
                         >
                             <x-forms.input
                                 type="number"
-                                name="{{ $aiToken->ai_model_id }}"
+                                name="{{ $aiToken->entity_id }}"
                                 value="{{ $aiToken->cost_per_token }}"
-                                label="{{ __($aiModel->key) }}"
+                                label="{{ __($aiModel->key->value) }}"
                                 tooltip="{{ __($aiModel->title) }}"
                                 step="0.01"
                                 stepper

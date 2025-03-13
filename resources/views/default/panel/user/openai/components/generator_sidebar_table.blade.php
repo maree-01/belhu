@@ -97,14 +97,16 @@
                 <p class="lqd-audio-output mb-5">
                     {!! $entry->output !!}
                 </p>
-                <x-button
-                    class="w-full"
-                    size="lg"
-                    variant="ghost-shadow"
-                    href="{{ route('dashboard.user.generator.index', $entry->slug) }}"
-                >
-                    @lang('Open in AI Editor')
-                </x-button>
+                @if ((int) $setting->feature_ai_advanced_editor === 1)
+                    <x-button
+                        class="w-full"
+                        size="lg"
+                        variant="ghost-shadow"
+                        href="{{ route('dashboard.user.generator.index', $entry->slug) }}"
+                    >
+                        @lang('Open in AI Editor')
+                    </x-button>
+                @endif
                 <button
                     class="lqd-clipboard-copy size-9 absolute -bottom-4 -end-4 inline-flex items-center justify-center rounded-full border bg-heading-background p-0 text-heading-foreground shadow-lg transition-all hover:-translate-y-[2px] hover:scale-110"
                     data-copy-options='{ "content": ".lqd-audio-output", "contentIn": "<.lqd-card" }'
@@ -269,7 +271,7 @@
     <div class="float-right m-4">
         {{ $userOpenai->withPath(route('dashboard.user.openai.generator', 'ai_voiceover'))->links('pagination::bootstrap-5-alt') }}
     </div>
-@elseif ($openai->type == 'isolator')
+@elseif ($openai->type == \App\Domains\Entity\Enums\EntityEnum::ISOLATOR->value)
     <x-table>
         <x-slot:head>
             <tr>
@@ -441,10 +443,15 @@
                     @elseif($openai->type == 'code')
                         <td>
                             <div class="mt-4 min-h-full border-t pt-8">
-                                <pre
-                                    class="line-numbers min-h-full [direction:ltr]"
+                                <div
+                                    class="line-numbers min-h-full resize [direction:ltr] [&_kbd]:inline-flex [&_kbd]:rounded [&_kbd]:bg-primary/10 [&_kbd]:px-1 [&_kbd]:py-0.5 [&_kbd]:font-semibold [&_kbd]:text-primary [&_pre[class*=language]]:my-4 [&_pre[class*=language]]:rounded"
                                     id="code-pre"
-                                ><code id="code-output">{{ $entry->output }}</code></pre>
+                                >
+                                    <div
+                                        class="dark:prose-inverse prose"
+                                        id="code-output"
+                                    >{{ $entry->output }}</div>
+                                </div>
                             </div>
                         </td>
                     @else

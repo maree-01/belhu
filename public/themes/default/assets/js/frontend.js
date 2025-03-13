@@ -64,26 +64,16 @@
 		ev.preventDefault();
 		const list = document.querySelector('.templates-cards');
 		const overlay = document.querySelector('.templates-cards-overlay');
+
 		list.style.overflow = 'visible';
-		list.animate(
-			[
-				// keyframes
-				{ maxHeight: '28rem' },
-				{ maxHeight: '1500rem' },
-			],
-			{
-				// timing options
-				duration: 3000,
-				easing: 'ease-out',
-				fill: 'forwards',
-			}
-		);
-		overlay.animate([{ opacity: 0 }], {
+		list.style.maxHeight = 'none';
+
+		overlay.animate([ { opacity: 0 } ], {
 			duration: 650,
 			fill: 'forwards',
 			easing: 'ease-out',
 		});
-		const btnAnima = templatesShowMore.animate([{ opacity: 0 }], {
+		const btnAnima = templatesShowMore.animate([ { opacity: 0 } ], {
 			duration: 650,
 			fill: 'forwards',
 			easing: 'ease-out',
@@ -110,7 +100,7 @@
 			trigger.classList.add('lqd-is-active');
 
 			if (triggerType === 'toggle') {
-				[...trigger.parentElement.children]
+				[ ...trigger.parentElement.children ]
 					.filter(c => c.getAttribute('data-target') !== targetId)
 					.forEach(c => c.classList.remove('lqd-is-active'));
 			} else if (triggerType === 'accordion') {
@@ -126,14 +116,14 @@
 
 			targets?.forEach(t => {
 				t.style.display = 'block';
-				t.animate([{ opacity: 0 }, { opacity: 1 }], {
+				t.animate([ { opacity: 0 }, { opacity: 1 } ], {
 					duration: 650,
 					easing: 'cubic-bezier(.48,.81,.52,.99)',
 				});
 			});
 
 			if (triggerType === 'toggle') {
-				[...targets[0]?.parentElement?.children]
+				[ ...targets[0]?.parentElement?.children ]
 					?.filter(c =>
 						targetId.startsWith('.')
 							? !c.classList.contains(targetId.replace('.', ''))
@@ -219,24 +209,60 @@
 			}
 
 			if (getContentFrom) {
-				const textContent = extractTextWithLinks(getContentFrom);
-				if (typeof toastr === 'undefined') {
-					return;
+				const copyButtonsTemplate = document.querySelector('#copy-btns-template');
+				const wrapper = clipboardCopyButton.closest('.lqd-clipboard-copy-wrap');
+				let textContent = extractTextWithLinks(getContentFrom);
+
+				wrapper?.classList?.toggle('active');
+
+				copyToClipboard(textContent, 'text');
+
+				if ( wrapper && copyButtonsTemplate && !clipboardCopyButton.classList.contains('copy-buttons-appended') ) {
+					const copyButtons = copyButtonsTemplate.content.cloneNode(true);
+					const buttons = copyButtons.querySelectorAll('button');
+
+					wrapper.appendChild(copyButtons);
+					clipboardCopyButton.classList.add('copy-buttons-appended');
+
+					buttons.forEach(button => {
+						button.addEventListener('click', () => {
+							const copyType = button.getAttribute('data-copy-type');
+
+							if ( copyType === 'text' ) {
+								copyToClipboard(textContent, 'text');
+							} else if ( copyType === 'html' ) {
+								const unwrappedContent = getContentFrom.innerHTML
+									.replace(/<span[^>]*class="[^"]*animated-word[^"]*"[^>]*>(.*?)<\/span>/g, '$1')
+									.replace('[DONE]', '');
+								copyToClipboard(unwrappedContent, 'html');
+							} else if ( copyType === 'md' ) {
+								if ( typeof TurndownService !== 'undefined' ) {
+									const turndownService = new TurndownService();
+									const content = getContentFrom.innerHTML.replace('[DONE]', '');
+									copyToClipboard(turndownService.turndown(getContentFrom.innerHTML), 'md');
+								}
+							}
+						});
+					});
 				}
-				navigator.clipboard.writeText(textContent).then(() => {
-					toastr.success(
-						magicai_localize?.content_copied_to_clipboard ||
-						'Content copied to clipboard'
-					);
-				}).catch(err => {
-					toastr.error(
-						magicai_localize?.copy_failed ||
-						'Failed to copy content'
-					);
-				});
 			}
 		}
 	});
+
+	function copyToClipboard(content, contentType = 'text') {
+		if (typeof toastr === 'undefined') {
+			return;
+		}
+
+		navigator.clipboard.writeText(content).then(() => {
+			toastr.success(
+				magicai_localize && magicai_localize[`${contentType}_content_copied_to_clipboard`] ?
+					magicai_localize[`${contentType}_content_copied_to_clipboard`] :
+					'Content copied to clipboard' );
+		}).catch(err => {
+			toastr.error( magicai_localize?.copy_failed || 'Failed to copy content' );
+		});
+	}
 
 	function extractTextWithLinks(element) {
 		let result = '';
@@ -251,13 +277,22 @@
 		while ((node = walker.nextNode())) {
 			if (node.nodeType === Node.TEXT_NODE) {
 				result += node.nodeValue;
-			} else if (node.nodeType === Node.ELEMENT_NODE && node.nodeName === 'A') {
-				const linkText = node.textContent;
-				const url = node.href;
-				result += `${linkText} (${url})\n`; // Add a newline after each link
+			} else if (node.nodeType === Node.ELEMENT_NODE) {
+				const nodeStyles = window.getComputedStyle(node);
+
+				if (node.nodeName === 'A') {
+					result += `(${node.href})`;
+				} else if (node.nodeName === 'BR') {
+					result += '\n\n';
+				} else if (
+					nodeStyles.display === 'block' ||
+					nodeStyles.display === 'list-item'
+				) {
+					result += '\n';
+				}
 			}
 		}
-		return result;
+		return result.trim();
 	}
 
 	setAnchors.forEach(el => {

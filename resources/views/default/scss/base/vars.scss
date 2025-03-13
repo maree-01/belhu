@@ -86,6 +86,8 @@
 		--secondary-foreground: 0 0% 0%;
 		--background: 0 0% 100%;
 		--foreground: 222 14% 29%;
+        --gradient-from: 189 84% 73%;
+        --gradient-to: 240 73% 74%;
 		--border: 200 12% 95%;
 		--shadow: 0 4px 7px theme('colors.black/4%');
 		--heading-background: 0 0% 100%;
@@ -119,7 +121,7 @@
 		--font-body: 'Inter';
 		--font-heading: 'Golos Text';
 
-		--headings-font-family: theme(fontFamily.heading);
+		--headings-font-family: theme('fontFamily.heading');
 		--headings-line-height: 1.25rem;
 		--headings-font-weight: 600;
 		--headings-text-transform: ;
@@ -182,6 +184,8 @@
 
 		--switcher-ball: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23e6e7e9'/%3e%3c/svg%3e");
 		--switcher-ball-active: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23ffffff'/%3e%3c/svg%3e");
+
+		--top-notice-bar-height: 2.25rem;
 
 		font-size: 16px;
 	}

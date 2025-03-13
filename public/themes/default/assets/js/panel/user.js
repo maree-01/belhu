@@ -39,8 +39,8 @@ function userSave( user_id ) {
 	formData.append( 'country', $( "#country" ).val() );
 	formData.append( 'type', $( "#type" ).val() );
 	formData.append( 'status', $( "#status" ).val() );
-	formData.append( 'remaining_words', $( "#remaining_words" ).val() );
-	formData.append( 'remaining_images', $( "#remaining_images" ).val() );
+
+    collectCreditsToFormData(formData);
 
 	$.ajax( {
 		type: "post",

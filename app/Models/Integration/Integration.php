@@ -3,7 +3,6 @@
 namespace App\Models\Integration;
 
 use App\Models\Extension;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -16,7 +15,7 @@ class Integration extends Model
         'description',
         'image',
         'slug',
-        'status'
+        'status',
     ];
 
     public function hasExtension(): HasOne
@@ -29,9 +28,10 @@ class Integration extends Model
         return $this->hasOne(Extension::class, 'slug', 'slug');
     }
 
-
     public function getFormClassName(): string
     {
-        return 'App\Services\Integration\\' . ucfirst($this->app);
+        return match ($this->slug) {
+            'wordpress' => \App\Extensions\Wordpress\System\Services\Wordpress::class,
+        };
     }
 }

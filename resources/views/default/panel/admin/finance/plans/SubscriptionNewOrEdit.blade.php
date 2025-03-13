@@ -1,4 +1,5 @@
 @extends('panel.layout.settings', ['layout' => 'fullwidth'])
+
 @section('title', (isset($subscription) ? __('Edit') : __('Create')) . ' ' . __('Subscription'))
 @section('titlebar_actions', '')
 
@@ -122,6 +123,7 @@
                     required
                 />
                 <x-forms.input
+
                     class:container="w-full mt-4"
                     id="is_team_plan"
                     type="checkbox"
@@ -141,57 +143,6 @@
                     value="{{ isset($subscription) ? $subscription->plan_allow_seat : null }}"
                     size="lg"
                 />
-
-                <div class="mt-4 flex gap-2">
-                    <div class="w-1/2 md:w-6/12">
-                        <x-forms.input
-                            class:container="w-full my-1"
-                            id="display_word"
-                            label="{{ __('Total Words') }}"
-                            type="checkbox"
-                            name="display_word"
-                            :checked="(isset($subscription) && $subscription?->display_word_count) || !isset($subscription)"
-                            tooltip="{{ __('ON to display word count in plans') }}"
-                            switcher
-                        />
-
-                        <x-forms.input
-                            id="total_words"
-                            type="number"
-                            name="total_words"
-                            size="lg"
-                            value="{{ isset($subscription) ? $subscription->total_words : null }}"
-                        />
-                    </div>
-
-                    <div class="w-1/2 md:w-6/12">
-                        <x-forms.input
-                            class:container="w-full my-1"
-                            id="display_img"
-                            type="checkbox"
-                            name="display_img"
-                            label="{{ __('Total Images') }}"
-                            :checked="(isset($subscription) && $subscription?->display_imag_count) || !isset($subscription)"
-                            tooltip="{{ __('ON to display image count in plans') }}"
-                            switcher
-                        />
-
-                        <x-forms.input
-                            id="total_images"
-                            type="number"
-                            name="total_images"
-                            value="{{ isset($subscription) ? $subscription->total_images : null }}"
-                            size="lg"
-                        />
-                    </div>
-                </div>
-
-                <x-alert class="mt-1 w-full">
-                    <p>
-                        {{ __('Enter -1 for unlimited usage.') }}
-                    </p>
-                </x-alert>
-
                 <x-forms.input
                     class:container="w-full mt-4 hidden"
                     id="max_tokens"
@@ -212,6 +163,7 @@
                         size="lg"
                         required
                     >
+                        {{ EntityEnum::toOptions($subscription?->ai_name) }}
                         @if (isset($subscription))
                             <option
                                 value="text-davinci-003"
@@ -241,25 +193,35 @@
                                 value="gpt-4-1106-preview"
                                 @selected($subscription->ai_name == 'gpt-4-1106-preview')
                             >
-                                {{ __('GPT-4 Turbo (Updated Knowleddge cutoff of April 2023, 128k)') }}
+                                {{ __('GPT-4 Turbo (Updated Knowledge cutoff of April 2023, 128k)') }}
                             </option>
                             <option
                                 value="gpt-4-0125-preview"
                                 @selected($subscription->ai_name == 'gpt-4-0125-preview')
                             >
-                                {{ __('GPT-4 Turbo (Updated Knowleddge cutoff of Dec 2023, 128k)') }}
+                                {{ __('GPT-4 Turbo (Updated Knowledge cutoff of Dec 2023, 128k)') }}
                             </option>
                             <option
                                 value="gpt-4-turbo"
                                 @selected($subscription->ai_name == 'gpt-4-turbo')
                             >
-                                {{ __('GPT-4 Turbo with Vision (Updated Knowleddge cutoff of Dec 2023, 128k)') }}
+                                {{ __('GPT-4 Turbo with Vision (Updated Knowledge cutoff of Dec 2023, 128k)') }}
                             </option>
                             <option
                                 value="gpt-4o"
                                 @selected($subscription->ai_name == 'gpt-4o')
                             >
-                                {{ __('GPT-4o Most advanced, multimodal flagship model that’s cheaper and faster than GPT-4 Turbo.  (Updated Knowleddge cutoff of Oct 2023, 128k)') }}
+                                {{ __('GPT-4o Most advanced, multimodal flagship model that’s cheaper and faster than GPT-4 Turbo.  (Updated Knowledge cutoff of Oct 2023, 128k)') }}
+                            </option>
+                            <option value="o1-preview"
+                                    @selected($subscription->ai_name == 'o1-preview')
+                            >
+                                @lang('GPT o1-preview (Updated Knowledge cutoff of Dec 2023, 128k)')
+                            </option>
+                            <option value="o1-mini"
+                                    @selected($subscription->ai_name == 'o1-mini')
+                            >
+                                @lang('GPT o1-mini (Updated Knowledge cutoff of Dec 2023, 128k)')
                             </option>
                         @else
                             <option value="text-davinci-003">
@@ -278,16 +240,22 @@
                                 {{ __('ChatGPT 4') }}
                             </option>
                             <option value="gpt-4-1106-preview">
-                                {{ __('GPT-4 Turbo (Updated Knowleddge cutoff of April 2023, 128k)') }}
+                                {{ __('GPT-4 Turbo (Updated Knowledge cutoff of April 2023, 128k)') }}
                             </option>
                             <option value="gpt-4-0125-preview">
-                                {{ __('GPT-4 Turbo (Updated Knowleddge cutoff of Dec 2023, 128k)') }}
+                                {{ __('GPT-4 Turbo (Updated Knowledge cutoff of Dec 2023, 128k)') }}
                             </option>
                             <option value="gpt-4-turbo">
-                                {{ __('GPT-4 Turbo with Vision (Updated Knowleddge cutoff of Dec 2023, 128k)') }}
+                                {{ __('GPT-4 Turbo with Vision (Updated Knowledge cutoff of Dec 2023, 128k)') }}
                             </option>
                             <option value="gpt-4o">
-                                {{ __('GPT-4o Most advanced, multimodal flagship model that’s cheaper and faster than GPT-4 Turbo.  (Updated Knowleddge cutoff of Oct 2023, 128k)') }}
+                                {{ __('GPT-4o Most advanced, multimodal flagship model that’s cheaper and faster than GPT-4 Turbo.  (Updated Knowledge cutoff of Oct 2023, 128k)') }}
+                            </option>
+                            <option value="o1-preview">
+                                @lang('GPT o1-preview (Updated Knowledge cutoff of Dec 2023, 128k)')
+                            </option>
+                            <option value="o1-mini">
+                                @lang('GPT o1-mini (Updated Knowledge cutoff of Dec 2023, 128k)')
                             </option>
                         @endif
                     </x-forms.input>

@@ -229,7 +229,7 @@
                                                 $upgrade = true;
                                             }
                                         } else {
-                                            if ($auth->type != 'admin' && $item->premium == 1 && $plan_type === 'regular') {
+                                            if (!$auth->isAdmin() && $item->premium == 1 && $plan_type === 'regular') {
                                                 $upgrade = true;
                                             }
                                         }
@@ -287,51 +287,41 @@
                                                     </a>
                                                 @elseif($item->type == 'text' or $item->type == 'code')
                                                     @if ($item->slug == 'ai_article_wizard_generator')
-                                                        @if (Auth::user()->remaining_words > 0 or Auth::user()->remaining_words == -1)
-                                                            <a
-                                                                class="size-full absolute left-0 top-0 inline-block overflow-hidden text-start -indent-[99999px]"
-                                                                href="{{ LaravelLocalization::localizeUrl(route('dashboard.user.openai.articlewizard.new')) }}"
-                                                            >
-                                                                {{ __('Create Workbook') }}
-                                                            </a>
-                                                        @endif
-                                                    @else
-                                                        @if (Auth::user()->remaining_words > 0 or Auth::user()->remaining_words == -1)
-                                                            <a
-                                                                class="size-full absolute left-0 top-0 inline-block overflow-hidden text-start -indent-[99999px]"
-                                                                href="{{ LaravelLocalization::localizeUrl(route('dashboard.user.openai.generator.workbook', $item->slug)) }}"
-                                                            >
-                                                                {{ __('Create Workbook') }}
-                                                            </a>
-                                                        @endif
-                                                    @endif
-                                                @elseif($item->type == 'voiceover' || $item->type == 'isolator')
-                                                    @if (Auth::user()->remaining_words > 0 or Auth::user()->remaining_words == -1)
                                                         <a
                                                             class="size-full absolute left-0 top-0 inline-block overflow-hidden text-start -indent-[99999px]"
-                                                            href="{{ LaravelLocalization::localizeUrl(route('dashboard.user.openai.generator', $item->slug)) }}"
+                                                            href="{{ LaravelLocalization::localizeUrl(route('dashboard.user.openai.articlewizard.new')) }}"
+                                                        >
+                                                            {{ __('Create Workbook') }}
+                                                        </a>
+                                                    @else
+                                                        <a
+                                                            class="size-full absolute left-0 top-0 inline-block overflow-hidden text-start -indent-[99999px]"
+                                                            href="{{ LaravelLocalization::localizeUrl(route('dashboard.user.openai.generator.workbook', $item->slug)) }}"
                                                         >
                                                             {{ __('Create Workbook') }}
                                                         </a>
                                                     @endif
+                                                @elseif($item->type == 'voiceover' || $item->type == 'isolator')
+                                                    <a
+                                                        class="size-full absolute left-0 top-0 inline-block overflow-hidden text-start -indent-[99999px]"
+                                                        href="{{ LaravelLocalization::localizeUrl(route('dashboard.user.openai.generator', $item->slug)) }}"
+                                                    >
+                                                        {{ __('Create Workbook') }}
+                                                    </a>
                                                 @elseif($item->type == 'image')
-                                                    @if (Auth::user()->remaining_images > 0 or Auth::user()->remaining_images == -1)
-                                                        <a
-                                                            class="size-full absolute left-0 top-0 inline-block overflow-hidden text-start -indent-[99999px]"
-                                                            href="{{ LaravelLocalization::localizeUrl(route('dashboard.user.openai.generator', $item->slug)) }}"
-                                                        >
-                                                            {{ __('Create') }}
-                                                        </a>
-                                                    @endif
+                                                    <a
+                                                        class="size-full absolute left-0 top-0 inline-block overflow-hidden text-start -indent-[99999px]"
+                                                        href="{{ LaravelLocalization::localizeUrl(route('dashboard.user.openai.generator', $item->slug)) }}"
+                                                    >
+                                                        {{ __('Create') }}
+                                                    </a>
                                                 @elseif($item->type == 'audio')
-                                                    @if (Auth::user()->remaining_words > 0 or Auth::user()->remaining_words == -1)
-                                                        <a
-                                                            class="size-full absolute left-0 top-0 inline-block overflow-hidden text-start -indent-[99999px]"
-                                                            href="{{ LaravelLocalization::localizeUrl(route('dashboard.user.openai.generator', $item->slug)) }}"
-                                                        >
-                                                            {{ __('Create') }}
-                                                        </a>
-                                                    @endif
+                                                    <a
+                                                        class="size-full absolute left-0 top-0 inline-block overflow-hidden text-start -indent-[99999px]"
+                                                        href="{{ LaravelLocalization::localizeUrl(route('dashboard.user.openai.generator', $item->slug)) }}"
+                                                    >
+                                                        {{ __('Create') }}
+                                                    </a>
                                                 @else
                                                     <div class="absolute inset-0 flex items-center justify-center bg-zinc-900/5 backdrop-blur-[1px]">
                                                         <a
@@ -348,8 +338,8 @@
                                             {{-- Getting generator options via ajax call --}}
                                             <a
                                                 class="absolute inset-0 z-20 inline-block [&.loading]:animate-pulse [&.loading]:bg-white/50"
-                                                href="/dashboard/user/generator/option/{{ $item->slug }}"
-                                                x-init
+                                                data-href="/dashboard/user/generator/option/{{ $item->slug }}"
+                                                x-init="$el.setAttribute('href', $el.getAttribute('data-href'))"
                                                 x-target="lqd-generator-options"
                                                 @ajax:before="document.querySelector('#document_title').value = ''; $el.classList.add('loading')"
                                                 @ajax:success="setGeneratorStep(1)"

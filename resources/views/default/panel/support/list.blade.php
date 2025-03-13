@@ -1,7 +1,7 @@
 @extends('panel.layout.app')
 @section('title', __('Support Requests'))
 @section('titlebar_actions')
-    @if (Auth::user()->type != 'admin')
+    @if (!Auth::user()->isAdmin())
         <x-button href="{{ route('dashboard.support.new') }}">
             {{ __('Create New Support Request') }}
             <x-tabler-plus class="size-4" />
@@ -47,7 +47,7 @@
                         </td>
                         <td>
                             <x-badge
-                                class="text-2xs"
+                                class="whitespace-nowrap text-2xs"
                                 variant="{{ $entry->status === 'Answered' ? 'success' : 'secondary' }}"
                             >
                                 {{ __($entry->status) }}

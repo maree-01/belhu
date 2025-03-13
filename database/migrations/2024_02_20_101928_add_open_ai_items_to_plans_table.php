@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('plans', function (Blueprint $table) {
-            $table->json('open_ai_items')->nullable()->after('display_word_count');
+            $table->json('open_ai_items')->nullable();
         });
     }
 

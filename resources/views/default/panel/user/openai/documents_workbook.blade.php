@@ -4,7 +4,7 @@
 @section('titlebar_title', $workbook->title)
 @section('titlebar_actions')
     {{-- Edit with AI Editor --}}
-    @if ($setting->feature_ai_advanced_editor && $workbook->generator->type !== 'voiceover' && $workbook->generator->type !== 'isolator')
+    @if ($setting->feature_ai_advanced_editor && $workbook->generator->type !== 'voiceover' && $workbook->generator->type !== \App\Domains\Entity\Enums\EntityEnum::ISOLATOR->value)
         <x-button
             variant="ghost-shadows"
             href="{{ route('dashboard.user.generator.index', $workbook->slug) }}"
@@ -62,7 +62,7 @@
             </x-slot:dropdown>
         </x-dropdown.dropdown>
 
-        @if (!empty($integrations) && $checkIntegration)
+        @if (!empty($integrations) && $checkIntegration && $wordpressExist)
             <x-dropdown.dropdown
                 class="doc-integrate-publish-dropdown"
                 class:dropdown-dropdown="max-lg:end-auto max-lg:start-0"
@@ -128,7 +128,7 @@
     <script src="{{ custom_theme_url('/assets/js/panel/tinymce-theme-handler.js') }}"></script>
     <script src="{{ custom_theme_url('/assets/js/panel/workbook.js') }}"></script>
 
-    @if ($openai->type === 'voiceover' || $openai->type === 'isolator')
+    @if ($openai->type === 'voiceover' || $openai->type === \App\Domains\Entity\Enums\EntityEnum::ISOLATOR->value)
         <script src="{{ custom_theme_url('/assets/libs/wavesurfer/wavesurfer.js') }}"></script>
         <script src="{{ custom_theme_url('/assets/js/panel/voiceover.js') }}"></script>
     @endif
@@ -139,6 +139,8 @@
             href="{{ custom_theme_url('/assets/libs/prism/prism.css') }}"
         />
         <script src="{{ custom_theme_url('/assets/libs/prism/prism.js') }}"></script>
+        <script src="{{ custom_theme_url('/assets/js/format-string.js') }}"></script>
+
         <script>
             window.Prism = window.Prism || {};
             window.Prism.manual = true;
@@ -150,32 +152,11 @@
                 const codeOutput = codePre?.querySelector('#code-output');
 
                 if (codeOutput) {
-                    let codeOutputText = codeOutput.textContent;
-                    const codeBlocks = codeOutputText.match(/```[A-Za-z_]*\n[\s\S]+?```/g);
-                    if (codeBlocks) {
-                        codeBlocks.forEach((block) => {
-                            const language = block.match(/```([A-Za-z_]*)/)[1];
-                    const code = block.replace(/```[A-Za-z_]*\n/, '').replace(/```/, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(
-                        /"/g, '&quot;').replace(/'/g, '&#039;');
-                    const wrappedCode = `<pre><code class="language-${language}">${code}</code></pre>`;
-                    codeOutputText = codeOutputText.replace(block, wrappedCode);
-                });
-            }
-
-            codePre.innerHTML = codeOutputText;
-
-            codePre.querySelectorAll('pre').forEach(pre => {
-                pre.classList.add(`language-${codeLang && codeLang.value !== '' ? codeLang.value : 'javascript'}`);
-                    })
-
                     // saving for copy
                     window.codeRaw = codeOutput.innerText;
 
-                    codePre.querySelectorAll('code').forEach(block => {
-                        Prism.highlightElement(block);
-                    });
+                    codeOutput.innerHTML = lqdFormatString(codeOutput.textContent);
                 };
-
             });
         </script>
     @endif

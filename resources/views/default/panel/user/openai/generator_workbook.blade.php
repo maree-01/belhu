@@ -25,6 +25,7 @@
         {{ __($openai->description) }}
     @endif
 @endsection
+
 @section('content')
     <div class="py-10">
         <div
@@ -37,10 +38,7 @@
                         {{ __('Remaining Credits') }}
                     </h5>
 
-                    <x-remaining-credit
-                        class="flex-col-reverse text-xs"
-                        style="inline"
-                    />
+                    <x-credit-list />
                 </x-card>
 
                 <x-card
@@ -82,7 +80,7 @@
                                         <x-slot:label-extra>
                                             <a
                                                 class="size-6 inline-flex items-center justify-center rounded-lg bg-green-500/20 text-green-700 transition-all hover:scale-110 hover:bg-green-500 hover:text-green-100"
-                                                href="{{ LaravelLocalization::localizeUrl(route('dashboard.user.brand.edit')) }}"
+                                                href="{{ LaravelLocalization::localizeUrl(route('dashboard.user.brand.create')) }}"
                                             >
                                                 <x-tabler-plus class="size-4" />
                                             </a>
@@ -136,7 +134,8 @@
                                         label="{{ __('Number of Results') }}"
                                         containerClass="w-full"
                                         name="number_of_results"
-                                        value="1"
+										min="1"
+										value="1"
                                         placeholder="{{ __('Number of results') }}"
                                         required
                                     />
@@ -148,6 +147,7 @@
                                 $placeholder = isset($question->description) && !empty($question->description) ? __($question->description) : __($question->question);
                             @endphp
                             <x-forms.input
+								required
                                 id="{{ $question->name }}"
                                 size="lg"
                                 containerClass="w-full"
@@ -168,7 +168,7 @@
                                 @if ($question->type === 'rss_feed')
                                     <x-slot:action>
                                         <button
-                                            class="fetch-rss flex h-full items-center gap-2 rounded-e-input px-3 text-2xs font-medium transition-colors hover:bg-secondary hover:text-secondary-foreground"
+                                            class="fetch-rss rounded-e-inpu1t flex h-full items-center gap-2 px-3 text-2xs font-medium transition-colors hover:bg-secondary hover:text-secondary-foreground"
                                             type="button"
                                         >
                                             <x-tabler-refresh class="size-4" />
@@ -222,6 +222,8 @@
                                         value="{{ $setting->openai_max_output_length }}"
                                         placeholder="{{ __('Maximum character length of text') }}"
                                         required
+                                        min="1"
+                                        step="1"
                                     />
                                 @endif
 
@@ -278,6 +280,24 @@
 
                             @default
                         @endswitch
+                        @if ($models->count() && setting('select_model_option', '0') == '1')
+                            <x-forms.input
+                                id="chatbot_front_model"
+                                type="select"
+                                size="lg"
+                                name="chatbot_front_model"
+                                label="{{ __('Select model') }}"
+                            >
+                                <option value="">
+                                    {{ __('Select model') }}
+                                </option>
+                                @foreach ($models as $model)
+                                    <option value="{{ $model->key }}">
+                                        {{ $model->selected_title }}
+                                    </option>
+                                @endforeach
+                            </x-forms.input>
+                        @endif
                         <x-button
                             class="mt-3 w-full"
                             id="openai_generator_button"
@@ -349,10 +369,15 @@
                         </a>
                     </div> --}}
                     @if ($openai->type == 'code')
-                        <pre
-                            class="line-numbers min-h-full [direction:ltr]"
+                        <div
+                            class="line-numbers min-h-full resize [direction:ltr] [&_kbd]:inline-flex [&_kbd]:rounded [&_kbd]:bg-primary/10 [&_kbd]:px-1 [&_kbd]:py-0.5 [&_kbd]:font-semibold [&_kbd]:text-primary [&_pre[class*=language]]:my-4 [&_pre[class*=language]]:rounded"
                             id="code-pre"
-                        ><code id="code-output">...</code></pre>
+                        >
+                            <div
+                                class="dark:prose-inverse prose"
+                                id="code-output"
+                            >...</div>
+                        </div>
                     @else
                         <form class="workbook-form flex flex-col gap-4">
                             <x-forms.input
@@ -417,7 +442,7 @@
 @endphp
 @push('script')
     <script>
-        @if (setting('default_ai_engine', 'openai') == 'anthropic')
+        @if (setting('default_ai_engine', 'openai') == \App\Domains\Engine\Enums\EngineEnum::ANTHROPIC->value)
             const stream_type = 'backend';
         @else
             const stream_type = '{!! $settings_two->openai_default_stream_server !!}';
@@ -433,6 +458,7 @@
     <script src="{{ custom_theme_url('/assets/libs/turndown.js') }}"></script>
     <script src="{{ custom_theme_url('/assets/libs/tinymce/tinymce.min.js') }}"></script>
     <script src="{{ custom_theme_url('/assets/js/panel/tinymce-theme-handler.js') }}"></script>
+    <script src="{{ custom_theme_url('/assets/js/format-string.js') }}"></script>
     <script src="{{ custom_theme_url('/assets/js/panel/openai_generator_workbook.js') }}"></script>
 
     @if ($openai->type == 'code')
@@ -446,6 +472,11 @@
         var generated_document_slug = '';
 
         function sendOpenaiGeneratorForm(ev) {
+            @if ($openai->type == 'youtube' && $app_is_demo)
+                toastr.info("{{ __('This feature is restricted in the demo version.') }}");
+                return false;
+            @endif
+
             $('#savedDiv').addClass('hidden');
             $('#updateDiv').addClass('hidden');
             tinyMCE?.activeEditor?.setContent('');
@@ -456,6 +487,7 @@
             const typingTemplate = document.querySelector('#typing-template').content.cloneNode(true);
             const typingEl = typingTemplate.firstElementChild;
             const workbook_regenerate = document.querySelector('#workbook_regenerate');
+            const chatbotFrontModelElement = document.getElementById('chatbot_front_model');
             Alpine.store('appLoadingIndicator').show();
             submitBtn.classList.add('lqd-form-submitting');
             submitBtn.disabled = true;
@@ -475,6 +507,10 @@
             formData.append('post_type', '{{ $openai->slug }}');
             formData.append('openai_id', '{{ $openai->id }}');
 
+            if (chatbotFrontModelElement) {
+                formData.append('chatbot_front_model', chatbotFrontModelElement.value);
+            }
+
             @if ($openai->type == 'text' || $openai->type == 'rss' || $openai->type == 'youtube')
                 formData.append('maximum_length', $("#maximum_length").val());
                 formData.append('number_of_results', $("#number_of_results").val());
@@ -485,6 +521,7 @@
             @endif
 
             @if ($openai->type == 'youtube')
+
                 formData.append('youtube_action', $("#youtube_action").val());
             @endif
 
@@ -513,31 +550,10 @@
                         const codeOutput = codePre?.querySelector('#code-output');
 
                         if (codeOutput) {
-                            let codeOutputText = codeOutput.textContent;
-                            const codeBlocks = codeOutputText.match(/```[A-Za-z_]*\n[\s\S]+?```/g);
-                            if (codeBlocks) {
-                                codeBlocks.forEach((block) => {
-                                    const language = block.match(/```([A-Za-z_]*)/)[1];
-                                const code = block.replace(/```[A-Za-z_]*\n/, '').replace(/```/, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g,
-                                    '&gt;').replace(
-                                    /"/g, '&quot;').replace(/'/g, '&#039;');
-                                const wrappedCode = `<pre><code class="language-${language}">${code}</code></pre>`;
-                                codeOutputText = codeOutputText.replace(block, wrappedCode);
-                            });
-                        }
-
-                        codePre.innerHTML = codeOutputText;
-
-                        codePre.querySelectorAll('pre').forEach(pre => {
-                            pre.classList.add(`language-${codeLang && codeLang.value !== '' ? codeLang.value : 'javascript'}`);
-                            })
-
                             // saving for copy
                             window.codeRaw = codeOutput.innerText;
 
-                            codePre.querySelectorAll('code').forEach(block => {
-                                Prism.highlightElement(block);
-                            });
+                            codeOutput.innerHTML = lqdFormatString(codeOutput.textContent);
                         };
                         endResponse(submitBtn, workbook_regenerate, typingEl);
                     @else
@@ -548,7 +564,8 @@
                         const number_of_results = data.number_of_results;
                         const prompt = data.inputPrompt;
                         const openai_id = '{{ $openai->id }}';
-                        generate(message_no, creativity, maximum_length, number_of_results, prompt, openai_id);
+                        const open_router_model = $("#open_router_model").val();
+                        generate(message_no, creativity, maximum_length, number_of_results, prompt, openai_id, open_router_model);
                     @endif
                 },
                 error: function(data) {
@@ -578,7 +595,7 @@
                 const content = editor.getContent();
                 const message_no = $("#_message_no").val();
                 const prompt = $("#_prompt").val();
-                saveResponse(prompt, content, message_no, title);
+                saveResponse(prompt, content, message_no, title, true);
                 toastr.success('Document saved successfully!');
             }
         });

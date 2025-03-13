@@ -11,19 +11,22 @@
     class="absolute inset-x-0 top-0 z-10"
     x-data="{ mobileMenuVisible: false }"
 >
-    <div class="grid grid-flow-col items-center px-10 py-8 max-xl:grid-cols-2 max-xl:py-5 max-sm:px-5 xl:[grid-template-columns:20%_minmax(580px,100%)_20%]">
+    <div
+        class="grid grid-flow-col items-center px-10 py-8 max-xl:grid-cols-2 max-xl:py-5 max-sm:px-5 xl:[grid-template-columns:20%_minmax(580px,100%)_20%]">
         <a href="#">
             @if (isset($setting->logo_dashboard))
                 <img
                     class="h-auto group-[.navbar-shrinked]/body:hidden dark:hidden"
                     src="{{ custom_theme_url($setting->logo_dashboard_path, true) }}"
-                    @if (isset($setting->logo_dashboard_2x_path) && !empty($setting->logo_dashboard_2x_path)) srcset="/{{ $setting->logo_dashboard_2x_path }} 2x" @endif
+                    @if (isset($setting->logo_dashboard_2x_path) && !empty($setting->logo_dashboard_2x_path)) srcset="/{{ $setting->logo_dashboard_2x_path }} 2x"
+                    @endif
                     alt="{{ $setting->site_name }}"
                 >
                 <img
                     class="hidden h-auto group-[.navbar-shrinked]/body:hidden dark:block"
                     src="{{ custom_theme_url($setting->logo_dashboard_dark_path, true) }}"
-                    @if (isset($setting->logo_dashboard_dark_2x_path) && !empty($setting->logo_dashboard_dark_2x_path)) srcset="/{{ $setting->logo_dashboard_dark_2x_path }} 2x" @endif
+                    @if (isset($setting->logo_dashboard_dark_2x_path) && !empty($setting->logo_dashboard_dark_2x_path)) srcset="/{{ $setting->logo_dashboard_dark_2x_path }} 2x"
+                    @endif
                     alt="{{ $setting->site_name }}"
                 >
             @else
@@ -36,7 +39,8 @@
                 <img
                     class="hidden h-auto group-[.navbar-shrinked]/body:hidden dark:block"
                     src="{{ custom_theme_url($setting->logo_dark_path, true) }}"
-                    @if (isset($setting->logo_dark_2x_path) && !empty($setting->logo_dark_2x_path)) srcset="/{{ $setting->logo_dark_2x_path }} 2x" @endif
+                    @if (isset($setting->logo_dark_2x_path) && !empty($setting->logo_dark_2x_path)) srcset="/{{ $setting->logo_dark_2x_path }} 2x"
+                    @endif
                     alt="{{ $setting->site_name }}"
                 >
             @endif
@@ -64,7 +68,7 @@
         <div class="flex justify-end">
             <a
                 class="flex items-center gap-2 rounded-full border border-white/15 bg-black/15 px-7 py-3 leading-tight text-white/90 backdrop-blur-md transition-all hover:scale-110 hover:bg-white hover:text-black max-xl:hidden"
-                href="{{ app(\App\Repositories\ExtensionRepository::class)->subscriptionPayment() }}"
+                href="{{ app(\App\Domains\Marketplace\Repositories\ExtensionRepository::class)->subscriptionPayment() }}"
                 target="_blank"
             >
                 @lang('Subscribe Now')
@@ -74,8 +78,8 @@
                 @click.prvent="mobileMenuVisible = !mobileMenuVisible"
                 :class="{ 'lqd-is-active': mobileMenuVisible }"
             >
-                <x-tabler-x class="size-5 hidden group-[&.lqd-is-active]:block" />
-                <x-tabler-menu-deep class="size-5 group-[&.lqd-is-active]:hidden" />
+                <x-tabler-x class="size-5 hidden group-[&.lqd-is-active]:block"/>
+                <x-tabler-menu-deep class="size-5 group-[&.lqd-is-active]:hidden"/>
             </button>
         </div>
     </div>

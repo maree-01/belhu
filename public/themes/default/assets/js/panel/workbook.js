@@ -50,10 +50,10 @@ document.addEventListener('DOMContentLoaded', async function () {
 		directionality: document.documentElement.dir === 'rtl' ? 'rtl' : 'ltr',
 		forced_root_block: 'div',
 		supercode: {
-			renderer: (markdownCode) => {
+			renderer: markdownCode => {
 				return window.markdownit().render(markdownCode);
 			},
-			parser: (htmlCode) => {
+			parser: htmlCode => {
 				const HtmlToMarkdown = new TurndownService();
 				return HtmlToMarkdown.turndown(htmlCode);
 			},
@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 				},
 				'summarize': {
 					icon: 'magicIconSummarize',
-					text:  magicai_localize?.summarize || 'Summarize',
+					text: magicai_localize?.summarize || 'Summarize',
 					onAction: function () {
 						if (editor.selection.getContent().trim().length == 0) {
 							toastr.warning('Please select text');
@@ -288,7 +288,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 								icon: language.flag,
 								text: language.name,
 								onAction: function () {
-									if(editor.selection.getContent().trim().length == 0) {
+									if (editor.selection.getContent().trim().length == 0) {
 										toastr.warning('Please select text');
 										return;
 									}
@@ -315,40 +315,40 @@ document.addEventListener('DOMContentLoaded', async function () {
 							};
 						} );
 
-						return [...items, ...langs];
+						return [ ...items, ...langs ];
 					}
 				},
-				'simplify':{
-				icon: 'magicIconSimplify',
-				text: magicai_localize?.simplify || 'Simplify',
-				onAction: function () {
-					if(editor.selection.getContent().trim().length == 0) {
-						toastr.warning('Please select text');
-						return;
-					}
-					Alpine.store('appLoadingIndicator').show();
-					let formData = new FormData();
-					formData.append( 'prompt', 'Simplify below content' );
-					formData.append( 'content', editor.selection.getContent() );
-					$.ajax( {
-						type: 'post',
-						url: '/dashboard/user/openai/update-writing',
-						data: formData,
-						contentType: false,
-						processData: false,
-						success: function ( data ) {
-							editor.selection.setContent( data.result );
-							Alpine.store('appLoadingIndicator').hide();
-						},
-						error: function ( data ) {
-							Alpine.store('appLoadingIndicator').hide();
+				'simplify': {
+					icon: 'magicIconSimplify',
+					text: magicai_localize?.simplify || 'Simplify',
+					onAction: function () {
+						if (editor.selection.getContent().trim().length == 0) {
+							toastr.warning('Please select text');
+							return;
 						}
-					} );
-				}
+						Alpine.store('appLoadingIndicator').show();
+						let formData = new FormData();
+						formData.append( 'prompt', 'Simplify below content' );
+						formData.append( 'content', editor.selection.getContent() );
+						$.ajax( {
+							type: 'post',
+							url: '/dashboard/user/openai/update-writing',
+							data: formData,
+							contentType: false,
+							processData: false,
+							success: function ( data ) {
+								editor.selection.setContent( data.result );
+								Alpine.store('appLoadingIndicator').hide();
+							},
+							error: function ( data ) {
+								Alpine.store('appLoadingIndicator').hide();
+							}
+						} );
+					}
 				},
 				'changestyle': {
 					icon: 'magicIconChangeStyle',
-					text:  magicai_localize?.change_style_to || 'Change Style To',
+					text: magicai_localize?.change_style_to || 'Change Style To',
 					getSubmenuItems: function () {
 						const styles = [
 							'Professional',
@@ -359,13 +359,13 @@ document.addEventListener('DOMContentLoaded', async function () {
 							'Academic',
 							'Creative',
 						];
-						 
+
 						const items = styles.map( function ( style ) {
 							return {
 								type: 'menuitem',
 								text: style,
 								onAction: function () {
-									if(editor.selection.getContent().trim().length == 0) {
+									if (editor.selection.getContent().trim().length == 0) {
 										toastr.warning('Please select text');
 										return;
 									}
@@ -393,7 +393,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
 						return items;
 					}
-				},		
+				},
 				'changetone': {
 					icon: 'magicIconChangeTone',
 					text: magicai_localize?.change_tone_to || 'Change Tone To',
@@ -423,7 +423,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 								type: 'menuitem',
 								text: tone,
 								onAction: function () {
-									if(editor.selection.getContent().trim().length == 0) {
+									if (editor.selection.getContent().trim().length == 0) {
 										toastr.warning('Please select text');
 										return;
 									}
@@ -448,7 +448,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 								}
 							};
 						} );
-						
+
 						return items;
 					}
 				},
@@ -507,7 +507,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
 			editor.ui.registry.addMenuButton('magicAIButton', {
 				icon: 'magicIcon',
-				fetch: (callback) => {
+				fetch: callback => {
 					const items = Object.values(menuItems).splice(1).map(val => ({ type: 'menuitem', ...val }));
 					callback(items);
 				}
@@ -567,8 +567,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 		tinymce.activeEditor.execCommand('Redo');
 	});
 	$('body').on('click', '#workbook_copy', () => {
-		const codeOutput = document.querySelector('#code-output');
-		if (codeOutput && window.codeRaw) {
+		if (window.codeRaw) {
 			navigator.clipboard.writeText(window.codeRaw);
 			toastr.success(magicai_localize?.code_copied ||'Code copied to clipboard');
 			return;

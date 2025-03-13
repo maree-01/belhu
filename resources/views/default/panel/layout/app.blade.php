@@ -1,184 +1,53 @@
 @php
+    $theme = get_theme();
     $disable_floating_menu = true;
-    $google_fonts_string = '';
-    $dashboard_scss_path = 'resources/views/' . get_theme() . '/scss/dashboard.scss';
-    $app_js_path = 'resources/views/' . get_theme() . '/js/app.js';
     $wide_layout_px_class = Theme::getSetting('wideLayoutPaddingX', '');
     $theme_google_fonts = Theme::getSetting('dashboard.googleFonts');
+    $sidebarEnabledPages = Theme::getSetting('dashboard.sidebarEnabledPages') ?? [];
+    $has_sidebar = in_array(Route::currentRouteName(), $sidebarEnabledPages, true) || (isset($has_sidebar) && $has_sidebar);
 
-    if (isset($wide_layout_px) && !empty($wide_layout_px)) {
+    if (!empty($wide_layout_px)) {
         $wide_layout_px_class = $wide_layout_px;
     }
-
-    $i = 0;
-    foreach ($theme_google_fonts as $font_name => $weights) {
-        $font_string = 'family=' . str_replace(' ', '+', $font_name);
-        if (!empty($weights)) {
-            $font_string .= ':wght@' . implode(';', $weights);
-        }
-        $google_fonts_string .= $font_string . ($i === count($theme_google_fonts) - 1 ? '' : '&');
-        $i++;
-    }
 @endphp
-
 <!doctype html>
 <html
     class="scroll-smooth"
     lang="{{ LaravelLocalization::getCurrentLocale() }}"
     dir="{{ LaravelLocalization::getCurrentLocaleDirection() }}"
 >
+@include('panel.layout.partials.head')
 
-<head>
-    @if (isset($setting->google_analytics_code))
-        <!-- Google tag (gtag.js) -->
-        <script
-            async
-            src="https://www.googletagmanager.com/gtag/js?id={{ $setting->google_analytics_code }}"
-        ></script>
-        <script>
-            window.dataLayer = window.dataLayer || [];
-
-            function gtag() {
-                dataLayer.push(arguments);
-            }
-            gtag('js', new Date());
-
-            gtag('config', '{{ $setting->google_analytics_code }}');
-        </script>
-    @endif
-
-    <meta
-        name="csrf-token"
-        content="{{ csrf_token() }}"
-    >
-    <meta charset="utf-8" />
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1, viewport-fit=cover"
-    />
-    <meta
-        http-equiv="X-UA-Compatible"
-        content="ie=edge"
-    />
-    <meta
-        name="description"
-        content="{{ getMetaDesc($setting) }}"
-    >
-    @if (isset($setting->meta_keywords))
-        <meta
-            name="keywords"
-            content="{{ $setting->meta_keywords }}"
-        >
-    @endif
-    <link
-        rel="icon"
-        href="{{ custom_theme_url($setting->favicon_path ?? 'assets/favicon.ico', true) }}"
-    >
-    {{-- <title>{{ $setting->site_name }} | @yield('title')</title> --}}
-    <title>
-        {{ getMetaTitle($setting, ' ') ?? $setting->site_name }} | @yield('title')
-    </title>
-
-    @if (filled($google_fonts_string))
-        <link
-            rel="preconnect"
-            href="https://fonts.googleapis.com"
-        >
-        <link
-            rel="preconnect"
-            href="https://fonts.gstatic.com"
-            crossorigin
-        >
-        <link
-            href="https://fonts.googleapis.com/css2?{{ $google_fonts_string }}&display=swap"
-            rel="stylesheet"
-        >
-    @endif
-
-    {{-- Liquid global params --}}
-    <script>
-        window.liquid = {
-            assetsPath: '{{ url(custom_theme_url('assets')) }}',
-        };
-    </script>
-
-    <!-- CSS files -->
-    @if (!isset($disable_tblr) && empty($disable_tblr))
-        <link
-            href="{{ custom_theme_url('/assets/css/tabler.css') }}"
-            rel="stylesheet"
-        />
-        <link
-            href="{{ custom_theme_url('/assets/css/tabler-vendors.css') }}"
-            rel="stylesheet"
-        />
-    @endif
-    <link
-        href="{{ custom_theme_url('/assets/libs/toastr/toastr.min.css') }}"
-        rel="stylesheet"
-    />
-    <link
-        href="{{ custom_theme_url('/assets/libs/introjs/introjs.min.css') }}"
-        rel="stylesheet"
-    >
-
-    @yield('additional_css')
-    @stack('css')
-
-    @vite($dashboard_scss_path)
-    @if ($setting->dashboard_code_before_head != null)
-        {!! $setting->dashboard_code_before_head !!}
-    @endif
-
-    <script>
-        window.pusherConfig = @json(\Illuminate\Support\Arr::except(config('broadcasting.connections.pusher'), ['secret', 'app_id']));
-    </script>
-
-    @vite($app_js_path)
-
-    @if (setting('additional_custom_css') != null)
-        {!! setting('additional_custom_css') !!}
-    @endif
-
-    @livewireStyles
-
-</head>
-
-<body class="group/body bg-background font-body text-xs text-foreground antialiased transition-bg">
+<body
+    data-theme="{{ setting('dash_theme') }}"
+    @class([
+        'group/body bg-background font-body text-xs text-foreground antialiased transition-bg',
+        'has-sidebar' => $has_sidebar,
+        'is-admin-page' =>
+            Auth::check() &&
+            (Route::is('dashboard.admin*') ||
+                Route::is('dashboard.blog*') ||
+                Route::is('dashboard.page*')),
+        'is-auth-page' => Route::is('login', 'register', 'forgot_password'),
+    ])
+>
     @includeIf('panel.layout.after-body-open')
 
-    <script>
-        const lqdDarkMode = localStorage.getItem('lqdDarkMode');
-        const navbarIsShrinked = localStorage.getItem('lqdNavbarShrinked');
+    @include('panel.layout.partials.mode-script')
 
-        document.body.classList.toggle('theme-dark', lqdDarkMode == 'true');
-        document.body.classList.toggle('theme-light', lqdDarkMode != 'true');
+    @include('panel.layout.partials.loading')
 
-        if (navbarIsShrinked === 'true') {
-            document.body.classList.add('navbar-shrinked');
-        }
-    </script>
-
-    <div
-        class="pointer-events-none invisible fixed left-0 right-0 top-[0.5px] z-[999] bg-background opacity-0 transition-opacity"
-        id="app-loading-indicator"
-        x-data
-        :class="{ 'opacity-0': !$store.appLoadingIndicator.showing, 'invisible': !$store.appLoadingIndicator.showing }"
-    >
-        <div class="lqd-progress relative h-[3px] w-full bg-foreground/10">
-            <div class="lqd-progress-bar lqd-progress-bar-indeterminate lqd-app-loading-indicator-progress-bar absolute inset-0 bg-primary dark:bg-heading-foreground">
-            </div>
-        </div>
-    </div>
+    @includeWhen($app_is_not_demo, 'default.panel.layout.partials.top-notice-bar')
 
     <div class="lqd-page relative flex min-h-full flex-col">
 
-        <div @class(['lqd-page-wrapper flex grow-1'])>
+        <div class="lqd-page-wrapper grow-1 flex">
             @auth
                 @if (!isset($disable_navbar))
                     @include('panel.layout.navbar')
                 @endif
             @endauth
+
             <div class="lqd-page-content-wrap flex grow flex-col overflow-hidden">
                 @if ($good_for_now)
                     @auth
@@ -194,6 +63,7 @@
                         'lqd-page-content-container',
                         'h-full',
                         'container' => !isset($layout_wide) || empty($layout_wide),
+                        'container-fluid' => isset($layout_wide) && !empty($layout_wide),
                         $wide_layout_px_class =>
                             filled($wide_layout_px_class) &&
                             (isset($layout_wide) && !empty($layout_wide)),
@@ -204,6 +74,7 @@
                     <div @class([
                         'lqd-page-content-container',
                         'container' => !isset($layout_wide) || empty($layout_wide),
+                        'container-fluid' => isset($layout_wide) && !empty($layout_wide),
                         $wide_layout_px_class =>
                             filled($wide_layout_px_class) &&
                             (isset($layout_wide) && !empty($layout_wide)),
@@ -223,6 +94,7 @@
                     <div @class([
                         'lqd-page-content-container',
                         'container' => !isset($layout_wide) || empty($layout_wide),
+                        'container-fluid' => isset($layout_wide) && !empty($layout_wide),
                         $wide_layout_px_class =>
                             filled($wide_layout_px_class) &&
                             (isset($layout_wide) && !empty($layout_wide)),
@@ -230,10 +102,13 @@
                         @yield('content')
                     </div>
                 @endif
-
                 @auth
                     @if (!isset($disable_footer))
                         @include('panel.layout.footer')
+                    @endif
+
+                    @if ($has_sidebar && (!isset($disable_default_sidebar) || empty($disable_default_sidebar)))
+                        @includeIf('panel.layout.sidebar')
                     @endif
                 @endauth
             </div>
@@ -249,18 +124,21 @@
         @endif
     @endauth
 
-    @includeWhen(in_array($settings_two->chatbot_status, ['dashboard', 'both']) &&
-            !activeRoute('dashboard.user.openai.chat.list', 'dashboard.user.openai.chat.chat', 'dashboard.user.openai.webchat.workbook') &&
-            !(route('dashboard.user.openai.generator.workbook', 'ai_vision') == url()->current()) &&
-            !(route('dashboard.user.openai.generator.workbook', 'ai_chat_image') == url()->current()) &&
-            !(route('dashboard.user.openai.generator.workbook', 'ai_pdf') == url()->current()),
-        'panel.chatbot.widget')
+    @if (!isset($disableChatbot))
+        @includeWhen(in_array($settings_two->chatbot_status, ['dashboard', 'both']) &&
+                !activeRoute('dashboard.user.openai.chat.chat', 'dashboard.user.openai.chat.list', 'dashboard.user.openai.webchat.workbook') &&
+                !(route('dashboard.user.openai.generator.workbook', 'ai_vision') == url()->current()) &&
+                !(route('dashboard.user.openai.generator.workbook', 'ai_chat_image') == url()->current()) &&
+                !(route('dashboard.user.openai.generator.workbook', 'ai_pdf') == url()->current()),
+            'panel.chatbot.widget')
+    @endif
 
+    <script src="{{ custom_theme_url('/assets/libs/underscore/underscore-umd-min.js') }}"></script>
     @include('panel.layout.scripts')
 
-    @if (\Session::has('message'))
+    @if (session()->has('message'))
         <script>
-            toastr.{{ \Session::get('type') }}('{{ \Session::get('message') }}')
+            toastr.{{ session('type') }}('{{ session('message') }}');
         </script>
     @endif
 
@@ -297,13 +175,23 @@
     @endif
 
     @auth()
-        @if (\Illuminate\Support\Facades\Auth::user()->type == 'admin')
+        @if (auth()->user()->isAdmin())
             <script src="{{ custom_theme_url('/assets/js/panel/update-check.js') }}"></script>
         @endif
     @endauth
 
     <script src="{{ custom_theme_url('/assets/libs/introjs/intro.min.js') }}"></script>
     <script src="{{ custom_theme_url('assets/js/chatbot.js') }}"></script>
+
+    @includeIf('panel.layout.before-body-close')
+
+    @includeIf('seo-tool::particles.generate-seo-script')
+
+    @livewireScriptConfig()
+
+    @include('panel.layout.includes.lazy-intercom')
+
+    @include('panel.layout.includes.subscription-status')
 
     <template id="typing-template">
         <div class="lqd-typing relative inline-flex items-center gap-3 rounded-full bg-secondary !px-3 !py-2 text-xs font-medium leading-none text-secondary-foreground">
@@ -316,17 +204,41 @@
         </div>
     </template>
 
-    @includeIf('panel.layout.before-body-close')
-
-    @if (view()->exists('panel.admin.settings.particles.serper_seo'))
-        <script src="{{ custom_theme_url('/assets/js/panel/generateSEO.js') }}"></script>
-    @endif
-
-    @livewireScriptConfig()
-
-
-    @include('default.panel.layout.includes.intercom')
-
+    <template id="copy-btns-template">
+        <div
+            class="pointer-events-none invisible absolute bottom-full flex translate-y-1 flex-col gap-2 pb-2 opacity-0 transition-all group-[&.active]/copy-wrap:pointer-events-auto group-[&.active]/copy-wrap:visible group-[&.active]/copy-wrap:translate-y-0 group-[&.active]/copy-wrap:opacity-100">
+            <button
+                class="group/btn relative inline-flex size-9 items-center justify-center rounded-full bg-white p-0 text-[12px] text-black shadow-lg transition-all hover:scale-110"
+                data-copy-type="md"
+                type="button"
+            >
+                <x-tabler-markdown
+                    class="size-5"
+                    stroke-width="1.5"
+                />
+                <span
+                    class="absolute end-full top-1/2 me-1 -translate-y-1/2 translate-x-1 whitespace-nowrap rounded-full bg-white px-3 py-1 font-medium opacity-0 shadow-lg transition-all group-hover/btn:translate-x-0 group-hover/btn:opacity-100"
+                >
+                    @lang('Copy Markdown')
+                </span>
+            </button>
+            <button
+                class="group/btn relative inline-flex size-9 items-center justify-center rounded-full bg-white p-0 text-[12px] text-black shadow-lg transition-all hover:scale-110"
+                data-copy-type="html"
+                type="button"
+            >
+                <x-tabler-file-type-html
+                    class="size-5"
+                    stroke-width="1.5"
+                />
+                <span
+                    class="absolute end-full top-1/2 me-1 -translate-y-1/2 translate-x-1 whitespace-nowrap rounded-full bg-white px-3 py-1 font-medium opacity-0 shadow-lg transition-all group-hover/btn:translate-x-0 group-hover/btn:opacity-100"
+                >
+                    @lang('Copy HTML')
+                </span>
+            </button>
+        </div>
+    </template>
 </body>
 
 </html>

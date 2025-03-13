@@ -1,4 +1,6 @@
 @php
+    use App\Domains\Engine\Enums\EngineEnum;
+
     $new_settings = [
         [
             'title' => 'Branding',
@@ -78,8 +80,8 @@
 @section('titlebar_actions', '')
 @section('additional_css')
     <link
-        rel="stylesheet"
-        href="https://foliotek.github.io/Croppie/croppie.css"
+            rel="stylesheet"
+            href="https://foliotek.github.io/Croppie/croppie.css"
     />
     <style>
         #upload-demo {
@@ -131,26 +133,26 @@
 
     {{-- STARTING OLD LAOYUT --}}
     <form
-        id="settings_form"
-        onsubmit="return generalSettingsSave();"
-        enctype="multipart/form-data"
+            id="settings_form"
+            onsubmit="return generalSettingsSave();"
+            enctype="multipart/form-data"
     >
+        <!-- Step 1 -->
         <x-form-step
-            class="mb-4"
-            step="1"
-            label="{{ __('Global Settings') }}"
+                class="mb-4"
+                step="1"
+                label="{{ __('Global Settings') }}"
         />
-
         <div class="row mb-4">
             <div class="col-md-12">
                 <div class="mb-3">
                     <label class="form-label">{{ __('Site Name') }}</label>
                     <input
-                        class="form-control"
-                        id="site_name"
-                        type="text"
-                        name="site_name"
-                        value="{{ $setting->site_name }}"
+                            class="form-control"
+                            id="site_name"
+                            type="text"
+                            name="site_name"
+                            value="{{ $setting->site_name }}"
                     >
                 </div>
             </div>
@@ -159,11 +161,11 @@
                 <div class="mb-3">
                     <label class="form-label">{{ __('Site URL') }}</label>
                     <input
-                        class="form-control"
-                        id="site_url"
-                        type="text"
-                        name="site_url"
-                        value="{{ $setting->site_url }}"
+                            class="form-control"
+                            id="site_url"
+                            type="text"
+                            name="site_url"
+                            value="{{ $setting->site_url }}"
                     >
                 </div>
             </div>
@@ -172,11 +174,11 @@
                 <div class="mb-3">
                     <label class="form-label">{{ __('Site Email') }}</label>
                     <input
-                        class="form-control"
-                        id="site_email"
-                        type="text"
-                        name="site_email"
-                        value="{{ $setting->site_email }}"
+                            class="form-control"
+                            id="site_email"
+                            type="text"
+                            name="site_email"
+                            value="{{ $setting->site_email }}"
                     >
                 </div>
             </div>
@@ -185,9 +187,9 @@
                 <div class="mb-3">
                     <label class="form-label">{{ __('Default Country') }}</label>
                     <select
-                        class="form-select"
-                        id="default_country"
-                        name="default_country"
+                            class="form-select"
+                            id="default_country"
+                            name="default_country"
                     >
                         @include('panel.admin.settings.countries')
                     </select>
@@ -198,9 +200,9 @@
                 <div class="mb-3">
                     <label class="form-label">{{ __('Default Currency') }}</label>
                     <select
-                        class="form-select"
-                        id="default_currency"
-                        name="default_currency"
+                            class="form-select"
+                            id="default_currency"
+                            name="default_currency"
                     >
                         @include('panel.admin.settings.currencies')
                     </select>
@@ -212,18 +214,18 @@
 
                     <label class="form-label">{{ __('Registration Active') }}</label>
                     <select
-                        class="form-select"
-                        id="register_active"
-                        name="register_active"
+                            class="form-select"
+                            id="register_active"
+                            name="register_active"
                     >
                         <option
-                            value="1"
-                            {{ $setting->register_active == 1 ? 'selected' : '' }}
+                                value="1"
+                                {{ $setting->register_active == 1 ? 'selected' : '' }}
                         >
                             {{ __('Active') }}</option>
                         <option
-                            value="0"
-                            {{ $setting->register_active == 0 ? 'selected' : '' }}
+                                value="0"
+                                {{ $setting->register_active == 0 ? 'selected' : '' }}
                         >
                             {{ __('Passive') }}</option>
                     </select>
@@ -236,18 +238,18 @@
                         <x-info-tooltip text="{{ __('Make sure your SMTP settings are configured before activating this.') }}" />
                     </label>
                     <select
-                        class="form-select"
-                        id="login_with_otp"
-                        name="login_with_otp"
+                            class="form-select"
+                            id="login_with_otp"
+                            name="login_with_otp"
                     >
                         <option
-                            value="1"
-                            {{ $setting->login_with_otp ? 'selected' : '' }}
+                                value="1"
+                                {{ $setting->login_with_otp ? 'selected' : '' }}
                         >
                             {{ __('Active') }}</option>
                         <option
-                            value="0"
-                            {{ !$setting->login_with_otp ? 'selected' : '' }}
+                                value="0"
+                                {{ !$setting->login_with_otp ? 'selected' : '' }}
                         >
                             {{ __('Passive') }}</option>
                     </select>
@@ -258,25 +260,25 @@
                 <div class="mb-3">
                     <label class="form-label">{{ __('User Onboarding') }}
                         <x-badge
-                            class="ms-2 text-2xs"
-                            variant="secondary"
+                                class="ms-2 text-2xs"
+                                variant="secondary"
                         >
                             @lang('New')
                         </x-badge>
                     </label>
                     <select
-                        class="form-select"
-                        id="tour_seen"
-                        name="tour_seen"
+                            class="form-select"
+                            id="tour_seen"
+                            name="tour_seen"
                     >
                         <option
-                            value="1"
-                            {{ $setting->tour_seen == 1 ? 'selected' : '' }}
+                                value="1"
+                                {{ $setting->tour_seen == 1 ? 'selected' : '' }}
                         >
                             {{ __('Active') }}</option>
                         <option
-                            value="0"
-                            {{ $setting->tour_seen == 0 ? 'selected' : '' }}
+                                value="0"
+                                {{ $setting->tour_seen == 0 ? 'selected' : '' }}
                         >
                             {{ __('Passive') }}</option>
                     </select>
@@ -286,29 +288,27 @@
             <div class="col-md-12">
                 <div class="mb-3">
 
-                    <label class="form-label">{{ __('Default ai engine') }}
-
-                    </label>
+                    <label class="form-label">@lang('Default AI engine')</label>
                     <select
-                        class="form-select"
-                        id="default_ai_engine"
-                        name="default_ai_engine"
+                            class="form-select"
+                            id="default_ai_engine"
+                            name="default_ai_engine"
                     >
                         <option
-                            value="openai"
-                            {{ setting('default_ai_engine') == 'openai' ? 'selected' : '' }}
+                                value="{{EngineEnum::OPEN_AI->value}}"
+                                {{ setting('default_ai_engine') == EngineEnum::OPEN_AI->value ? 'selected' : '' }}
                         >
-                            {{ __('OpenAI') }}</option>
+                            {{ __(EngineEnum::OPEN_AI->label() ) }}</option>
                         <option
-                            value="anthropic"
-                            {{ setting('default_ai_engine') == 'anthropic' ? 'selected' : '' }}
+                                value="{{\App\Domains\Engine\Enums\EngineEnum::ANTHROPIC->value}}"
+                                {{ setting('default_ai_engine') == \App\Domains\Engine\Enums\EngineEnum::ANTHROPIC->value ? 'selected' : '' }}
                         >
-                            {{ __('Anthropic') }}</option>
+                            {{ __(EngineEnum::ANTHROPIC->label() ) }}</option>
                         <option
-                            value="gemini"
-                            {{ setting('default_ai_engine') == 'gemini' ? 'selected' : '' }}
+                                value="{{EngineEnum::GEMINI->value}}"
+                                {{ setting('default_ai_engine') == EngineEnum::GEMINI->value ? 'selected' : '' }}
                         >
-                            {{ __('Gemini') }}</option>
+                            {{ __(EngineEnum::GEMINI->label() ) }}</option>
                     </select>
                 </div>
             </div>
@@ -319,33 +319,33 @@
 
                     </label>
                     <select
-                        class="form-select"
-                        id="default_aw_image_engine"
-                        name="default_aw_image_engine"
+                            class="form-select"
+                            id="default_aw_image_engine"
+                            name="default_aw_image_engine"
                     >
                         <option
-                            value="unsplash"
-                            {{ setting('default_aw_image_engine', 'unsplash') == 'unsplash' ? 'selected' : '' }}
+                                value="{{EngineEnum::UNSPLASH->value}}"
+                                {{ setting('default_aw_image_engine', 'unsplash') == EngineEnum::UNSPLASH->value ? 'selected' : '' }}
                         >
-                            {{ __('Unsplash') }}</option>
+                            {{ __(EngineEnum::UNSPLASH->label() ) }}</option>
                         <option
-                            value="pexels"
-                            {{ setting('default_aw_image_engine', 'unsplash') == 'pexels' ? 'selected' : '' }}
+                                value="{{EngineEnum::PEXELS->value}}"
+                                {{ setting('default_aw_image_engine', 'unsplash') == EngineEnum::PEXELS->value ? 'selected' : '' }}
                         >
-                            {{ __('Pexels') }}</option>
+                            {{ __(EngineEnum::PEXELS->label()) }}</option>
                         <option
-                            value="pixabay"
-                            {{ setting('default_aw_image_engine', 'unsplash') == 'pixabay' ? 'selected' : '' }}
+                                value="{{EngineEnum::PIXABAY->value}}"
+                                {{ setting('default_aw_image_engine', 'unsplash') == EngineEnum::PIXABAY->value ? 'selected' : '' }}
                         >
-                            {{ __('Pixabay') }}</option>
+                            {{ __(EngineEnum::PIXABAY->label()) }}</option>
                         <option
-                            value="openai"
-                            {{ setting('default_aw_image_engine', 'unsplash') == 'openai' ? 'selected' : '' }}
+                                value="{{EngineEnum::OPEN_AI->value}}"
+                                {{ setting('default_aw_image_engine', 'unsplash') == EngineEnum::OPEN_AI->value ? 'selected' : '' }}
                         >
-                            {{ __('Openai Dall-E') }}</option>
+                            {{ __(EngineEnum::OPEN_AI->label() . ' Dall-E') }}</option>
                         <option
-                            value="sd"
-                            {{ setting('default_aw_image_engine', 'unsplash') == 'sd' ? 'selected' : '' }}
+                                value="sd"
+                                {{ setting('default_aw_image_engine', 'unsplash') == 'sd' ? 'selected' : '' }}
                         >
                             {{ __('Stable Diffusion') }}</option>
                     </select>
@@ -353,107 +353,130 @@
             </div>
 
             <div class="col-md-12">
-                <div class="mb-3">
-                    <label class="form-label">{{ __('Free Usage Upon Registration (words,images)') }}</label>
-                    <input
-                        class="form-control"
-                        id="free_plan"
-                        type="text"
-                        name="free_plan"
-                        value="{{ $setting->free_plan }}"
-                    >
-                </div>
-            </div>
-
-            <div class="col-md-12">
                 <x-forms.input
-                    class:container="mb-2"
-                    id="limit"
-                    type="checkbox"
-                    name="limit"
-                    :checked="$settings_two?->daily_limit_enabled == 1"
-                    label="{{ __('Apply daily limit on image generation') }}"
-                    switcher
+                        class:container="mb-2"
+                        id="limit"
+                        type="checkbox"
+                        name="limit"
+                        :checked="$settings_two?->daily_limit_enabled == 1"
+                        label="{{ __('Apply daily limit on image generation') }}"
+                        switcher
                 />
 
                 <div
-                    class="mb-[20px]"
-                    id="countField"
-                    style="{{ $settings_two?->daily_limit_enabled == 1 ? '' : 'display:none' }}"
+                        class="mb-[20px]"
+                        id="countField"
+                        style="{{ $settings_two?->daily_limit_enabled == 1 ? '' : 'display:none' }}"
                 >
                     <label class="form-label">{{ __('Daily Image Limit Count') }}</label>
                     <input
-                        class="form-control"
-                        id="daily_limit_count"
-                        type="text"
-                        name="daily_limit_count"
-                        value="{{ $settings_two?->allowed_images_count }}"
+                            class="form-control"
+                            id="daily_limit_count"
+                            type="text"
+                            name="daily_limit_count"
+                            value="{{ $settings_two?->allowed_images_count }}"
                     >
                 </div>
 
                 <div class="mb-[20px]">
                     <x-forms.input
-                        class:container="mb-2"
-                        id="voice_limit"
-                        type="checkbox"
-                        name="voice_limit"
-                        :checked="$settings_two?->daily_voice_limit_enabled == 1"
-                        label="{{ __('Apply daily limit on voice generation') }}"
-                        switcher
+                            class:container="mb-2"
+                            id="voice_limit"
+                            type="checkbox"
+                            name="voice_limit"
+                            :checked="$settings_two?->daily_voice_limit_enabled == 1"
+                            label="{{ __('Apply daily limit on voice generation') }}"
+                            switcher
                     />
                 </div>
 
                 <div
-                    class="mb-[20px]"
-                    id="voiceCountField"
-                    style="{{ $settings_two?->daily_voice_limit_enabled == 1 ? '' : 'display:none' }}"
+                        class="mb-[20px]"
+                        id="voiceCountField"
+                        style="{{ $settings_two?->daily_voice_limit_enabled == 1 ? '' : 'display:none' }}"
                 >
                     <label class="form-label">{{ __('Daily Voice Limit Count') }}</label>
                     <input
-                        class="form-control"
-                        id="daily_voice_limit_count"
-                        type="text"
-                        name="daily_voice_limit_count"
-                        value="{{ $settings_two?->allowed_voice_count }}"
+                            class="form-control"
+                            id="daily_voice_limit_count"
+                            type="text"
+                            name="daily_voice_limit_count"
+                            value="{{ $settings_two?->allowed_voice_count }}"
                     >
                 </div>
             </div>
         </div>
 
+        <!-- Step 2 -->
         <x-form-step
             class="mb-4 mt-5"
             step="2"
-            label="{{ __('Login / Registration') }}"
+            label="{{ __('Free Credits Usage Upon Registration') }}"
+        />
+        <div class="col-md-12">
+            <div class="accordion " id="accordionExample">
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingOne">
+                        <button
+                            class="accordion-button form-control"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#collapseOne"
+                            aria-expanded="true"
+                            aria-controls="collapseOne"
+                        >
+                            {{ __('Credits') }}
+                        </button>
+                    </h2>
+                    <div
+                        id="collapseOne"
+                        class="accordion-collapse collapse"
+                        aria-labelledby="headingOne"
+                        data-bs-parent="#accordionExample"
+                    >
+                        <div class="accordion-body">
+                            @livewire('assign-view-credits', ['entities' => setting('freeCreditsUponRegistration', \App\Models\User::getFreshCredits())])
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3 -->
+        <x-form-step
+                class="mb-4 mt-5"
+                step="3"
+                label="{{ __('Login / Registration') }}"
         />
         <div class="row mb-4">
             <div class="col-md-12">
                 <div class="mb-3">
                     <x-forms.input
-                        id="login_without_confirmation"
-                        type="checkbox"
-                        switcher
-                        type="checkbox"
-                        :checked="$setting->login_without_confirmation == 0"
-                        label="{{ __('Disable Login Without Confirmation') }}"
-                        tooltip="{{ __('If this is enabled users cannot login unless they confirm their emails.') }}"
+                            id="login_without_confirmation"
+                            type="checkbox"
+                            switcher
+                            type="checkbox"
+                            :checked="$setting->login_without_confirmation == 0"
+                            label="{{ __('Disable Login Without Confirmation') }}"
+                            tooltip="{{ __('If this is enabled users cannot login unless they confirm their emails.') }}"
                     />
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">{{ __('Registration Active') }}</label>
                     <select
-                        class="form-select"
-                        id="register_active"
-                        name="register_active"
+                            class="form-select"
+                            id="register_active"
+                            name="register_active"
                     >
                         <option
-                            value="1"
-                            {{ $setting->register_active == 1 ? 'selected' : '' }}
+                                value="1"
+                                {{ $setting->register_active == 1 ? 'selected' : '' }}
                         >
                             {{ __('Active') }}</option>
                         <option
-                            value="0"
-                            {{ $setting->register_active == 0 ? 'selected' : '' }}
+                                value="0"
+                                {{ $setting->register_active == 0 ? 'selected' : '' }}
                         >
                             {{ __('Passive') }}</option>
                     </select>
@@ -463,49 +486,50 @@
                     <h4 class="mb-3">{{ __('Social Login') }}</h4>
                     <x-alert class="rounde mb-4">
                         <a
-                            href="https://magicaidocs.liquid-themes.com/social-login"
-                            target="_blank"
+                                href="https://magicaidocs.liquid-themes.com/social-login"
+                                target="_blank"
                         >
                             {{ __('Check the documentation.') }}
                             <x-tabler-arrow-up-right class="size-4 inline align-text-bottom" />
                         </a>
                     </x-alert>
                     <x-forms.input
-                        class:container="mb-2"
-                        id="facebook_active"
-                        type="checkbox"
-                        :checked="$setting->facebook_active == 1"
-                        switcher
-                        label="{{ __('Facebook') }}"
+                            class:container="mb-2"
+                            id="facebook_active"
+                            type="checkbox"
+                            :checked="$setting->facebook_active == 1"
+                            switcher
+                            label="{{ __('Facebook') }}"
                     />
                     <x-forms.input
-                        class:container="mb-2"
-                        id="google_active"
-                        type="checkbox"
-                        :checked="$setting->google_active == 1"
-                        switcher
-                        label="{{ __('Google') }}"
+                            class:container="mb-2"
+                            id="google_active"
+                            type="checkbox"
+                            :checked="$setting->google_active == 1"
+                            switcher
+                            label="{{ __('Google') }}"
                     />
                     <x-forms.input
-                        class:container="mb-2"
-                        id="github_active"
-                        type="checkbox"
-                        :checked="$setting->github_active == 1"
-                        switcher
-                        label="{{ __('Github') }}"
+                            class:container="mb-2"
+                            id="github_active"
+                            type="checkbox"
+                            :checked="$setting->github_active == 1"
+                            switcher
+                            label="{{ __('Github') }}"
                     />
                 </div>
             </div>
         </div>
 
+        <!-- Step 4 -->
         <x-form-step
-            class="mb-4 mt-5"
-            step="3"
-            label="{{ __('Notification') }}"
+                class="mb-4 mt-5"
+                step="4"
+                label="{{ __('Notification') }}"
         >
             <x-badge
-                class="ms-2 text-2xs"
-                variant="secondary"
+                    class="ms-2 text-2xs"
+                    variant="secondary"
             >
                 @lang('New')
             </x-badge>
@@ -514,13 +538,13 @@
             <div class="col-md-12">
                 <div class="mb-3">
                     <x-forms.input
-                        id="notification_active"
-                        type="checkbox"
-                        switcher
-                        type="checkbox"
-                        :checked="setting('notification_active', 0) == 1"
-                        label="{{ __('Activate Notifications System') }}"
-                        tooltip="{{ __('To use the notification system, you must activate it and use Pusher.') }}"
+                            id="notification_active"
+                            type="checkbox"
+                            switcher
+                            type="checkbox"
+                            :checked="setting('notification_active', 0) == 1"
+                            label="{{ __('Activate Notifications System') }}"
+                            tooltip="{{ __('To use the notification system, you must activate it and use Pusher.') }}"
                     />
                 </div>
 
@@ -528,65 +552,65 @@
                     <h4 class="mb-3">{{ __('Pusher Settings') }}</h4>
                     <x-alert class="rounde mb-4">
                         <a
-                            href="https://magicaidocs.liquid-themes.com/pusher-configuration"
-                            target="_blank"
+                                href="https://magicaidocs.liquid-themes.com/pusher-configuration"
+                                target="_blank"
                         >
                             {{ __('Check the documentation.') }}
                             <x-tabler-arrow-up-right class="size-4 inline align-text-bottom" />
                         </a>
                     </x-alert>
                     <x-forms.input
-                        class:container="mb-3"
-                        id="pusher_app_id"
-                        type="text"
-                        size="lg"
-                        name="pusher_app_id"
-                        value="{{ setting('pusher_app_id') }}"
-                        label="{{ __('App ID') }}"
+                            class:container="mb-3"
+                            id="pusher_app_id"
+                            type="text"
+                            size="lg"
+                            name="pusher_app_id"
+                            value="{{ setting('pusher_app_id') }}"
+                            label="{{ __('App ID') }}"
                     />
                     <x-forms.input
-                        class:container="mb-3"
-                        id="pusher_app_key"
-                        type="text"
-                        size="lg"
-                        name="pusher_app_key"
-                        value="{{ setting('pusher_app_key') }}"
-                        label="{{ __('App Key') }}"
+                            class:container="mb-3"
+                            id="pusher_app_key"
+                            type="text"
+                            size="lg"
+                            name="pusher_app_key"
+                            value="{{ setting('pusher_app_key') }}"
+                            label="{{ __('App Key') }}"
                     />
                     <x-forms.input
-                        class:container="mb-3"
-                        id="pusher_app_secret"
-                        type="text"
-                        size="lg"
-                        name="pusher_app_secret"
-                        value="{{ setting('pusher_app_secret') }}"
-                        label="{{ __('App Secret') }}"
+                            class:container="mb-3"
+                            id="pusher_app_secret"
+                            type="text"
+                            size="lg"
+                            name="pusher_app_secret"
+                            value="{{ setting('pusher_app_secret') }}"
+                            label="{{ __('App Secret') }}"
                     />
                     <x-forms.input
-                        class:container="mb-3"
-                        id="pusher_app_cluster"
-                        type="text"
-                        size="lg"
-                        name="pusher_app_cluster"
-                        value="{{ setting('pusher_app_cluster', 'mt1') }}"
-                        label="{{ __('Cluster') }}"
+                            class:container="mb-3"
+                            id="pusher_app_cluster"
+                            type="text"
+                            size="lg"
+                            name="pusher_app_cluster"
+                            value="{{ setting('pusher_app_cluster', 'mt1') }}"
+                            label="{{ __('Cluster') }}"
                     />
                 </x-card>
             </div>
         </div>
 
+        <!-- Step 5 -->
         <x-form-step
-            class="mb-4 mt-5"
-            step="4"
-            label="{{ __('Google Recaptcha Login') }}"
+                class="mb-4 mt-5"
+                step="5"
+                label="{{ __('Google Recaptcha Login') }}"
         />
-
         <div class="row mb-4">
             <div class="mb-3">
                 <x-alert class="rounde mb-4">
                     <a
-                        href="https://scribehow.com/shared/Obtaining_reCAPTCHA_site_and_secret_keys_for_magicaicom__CMjndIDqTt26fz9xdhAQww"
-                        target="_blank"
+                            href="https://scribehow.com/shared/Obtaining_reCAPTCHA_site_and_secret_keys_for_magicaicom__CMjndIDqTt26fz9xdhAQww"
+                            target="_blank"
                     >
                         {{ __('Check the documentation.') }}
                         <x-tabler-arrow-up-right class="size-4 inline align-text-bottom" />
@@ -594,20 +618,20 @@
                 </x-alert>
 
                 <x-forms.input
-                    class:container="mb-2"
-                    id="recaptcha_login"
-                    type="checkbox"
-                    :checked="$setting->recaptcha_login == 1"
-                    switcher
-                    label="{{ __('Login Recaptcha') }}"
+                        class:container="mb-2"
+                        id="recaptcha_login"
+                        type="checkbox"
+                        :checked="$setting->recaptcha_login == 1"
+                        switcher
+                        label="{{ __('Login Recaptcha') }}"
                 />
                 <x-forms.input
-                    class:container="mb-2"
-                    id="recaptcha_register"
-                    type="checkbox"
-                    :checked="$setting->recaptcha_register == 1"
-                    switcher
-                    label="{{ __('Register Recaptcha') }}"
+                        class:container="mb-2"
+                        id="recaptcha_register"
+                        type="checkbox"
+                        :checked="$setting->recaptcha_register == 1"
+                        switcher
+                        label="{{ __('Register Recaptcha') }}"
                 />
 
                 <x-alert class="!mt-2">
@@ -619,43 +643,43 @@
                 <div class="mt-4">
                     <label class="form-label">{{ __('Google Recaptcha Site Key') }}</label>
                     <input
-                        class="form-control"
-                        id="recaptcha_sitekey"
-                        type="text"
-                        name="recaptcha_sitekey"
-                        value="{{ $setting->recaptcha_sitekey }}"
+                            class="form-control"
+                            id="recaptcha_sitekey"
+                            type="text"
+                            name="recaptcha_sitekey"
+                            value="{{ $setting->recaptcha_sitekey }}"
                     >
                 </div>
 
                 <div class="mt-4">
                     <label class="form-label">{{ __('Google Recaptcha Secret Key') }}</label>
                     <input
-                        class="form-control"
-                        id="recaptcha_secretkey"
-                        type="text"
-                        name="recaptcha_secretkey"
-                        value="{{ $setting->recaptcha_secretkey }}"
+                            class="form-control"
+                            id="recaptcha_secretkey"
+                            type="text"
+                            name="recaptcha_secretkey"
+                            value="{{ $setting->recaptcha_secretkey }}"
                     >
                 </div>
 
             </div>
         </div>
 
+        <!-- Step 6 -->
         <x-form-step
-            class="mb-4 mt-5"
-            step="5"
-            label="{{ __('Logo Settings') }}"
+                class="mb-4 mt-5"
+                step="6"
+                label="{{ __('Logo Settings') }}"
         />
-
         <div class="row mb-4">
             <div class="col-md-12 mb-3">
                 <div class="mb-4">
                     <label class="form-label">{{ __('Site Favicon') }}</label>
                     <input
-                        class="form-control"
-                        id="favicon"
-                        type="file"
-                        name="favicon"
+                            class="form-control"
+                            id="favicon"
+                            type="file"
+                            name="favicon"
                     >
                 </div>
                 <x-alert class="!mt-2">
@@ -671,77 +695,77 @@
                 <div class="mb-3">
                     <label class="form-label">{{ __('Site Logo') }}</label>
                     <input
-                        class="form-control item-img"
-                        id="logo"
-                        data-id="logo"
-                        type="file"
-                        name="logo"
+                            class="form-control item-img"
+                            id="logo"
+                            data-id="logo"
+                            type="file"
+                            name="logo"
                     >
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">{{ __('Site Logo (Dark)') }}</label>
                     <input
-                        class="form-control item-img"
-                        id="logo_dark"
-                        data-id="logo_dark"
-                        type="file"
-                        name="logo_dark"
+                            class="form-control item-img"
+                            id="logo_dark"
+                            data-id="logo_dark"
+                            type="file"
+                            name="logo_dark"
                     >
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">{{ __('Site Logo Sticky') }}</label>
                     <input
-                        class="form-control item-img"
-                        id="logo_sticky"
-                        data-id="logo_sticky"
-                        type="file"
-                        name="logo_sticky"
+                            class="form-control item-img"
+                            id="logo_sticky"
+                            data-id="logo_sticky"
+                            type="file"
+                            name="logo_sticky"
                     >
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">{{ __('Dashboard Logo') }}</label>
                     <input
-                        class="form-control item-img"
-                        id="logo_dashboard"
-                        data-id="logo_dashboard"
-                        type="file"
-                        name="logo_dashboard"
+                            class="form-control item-img"
+                            id="logo_dashboard"
+                            data-id="logo_dashboard"
+                            type="file"
+                            name="logo_dashboard"
                     >
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">{{ __('Dashboard Logo (Dark)') }}</label>
                     <input
-                        class="form-control item-img"
-                        id="logo_dashboard_dark"
-                        data-id="logo_dashboard_dark"
-                        type="file"
-                        name="logo_dashboard_dark"
+                            class="form-control item-img"
+                            id="logo_dashboard_dark"
+                            data-id="logo_dashboard_dark"
+                            type="file"
+                            name="logo_dashboard_dark"
                     >
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">{{ __('Dashboard Logo Collapsed') }}</label>
                     <input
-                        class="form-control item-img"
-                        id="logo_collapsed"
-                        data-id="logo_collapsed"
-                        type="file"
-                        name="logo_collapsed"
+                            class="form-control item-img"
+                            id="logo_collapsed"
+                            data-id="logo_collapsed"
+                            type="file"
+                            name="logo_collapsed"
                     >
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">{{ __('Dashboard Logo Collapsed (Dark)') }}</label>
                     <input
-                        class="form-control item-img"
-                        id="logo_collapsed_dark"
-                        data-id="logo_collapsed_dark"
-                        type="file"
-                        name="logo_collapsed_dark"
+                            class="form-control item-img"
+                            id="logo_collapsed_dark"
+                            data-id="logo_collapsed_dark"
+                            type="file"
+                            name="logo_collapsed_dark"
                     >
                 </div>
 
@@ -752,86 +776,87 @@
                 <div class="mb-3">
                     <label class="form-label">{{ __('Site Logo') }}</label>
                     <input
-                        class="form-control item-img-x2"
-                        id="logo_2x"
-                        data-id="logo_2x"
-                        type="file"
-                        name="logo_2x"
+                            class="form-control item-img-x2"
+                            id="logo_2x"
+                            data-id="logo_2x"
+                            type="file"
+                            name="logo_2x"
                     >
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">{{ __('Site Logo (Dark)') }}</label>
                     <input
-                        class="form-control item-img-x2"
-                        id="logo_dark_2x"
-                        data-id="logo_dark_2x"
-                        type="file"
-                        name="logo_dark_2x"
+                            class="form-control item-img-x2"
+                            id="logo_dark_2x"
+                            data-id="logo_dark_2x"
+                            type="file"
+                            name="logo_dark_2x"
                     >
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">{{ __('Site Logo Sticky') }}</label>
                     <input
-                        class="form-control item-img-x2"
-                        id="logo_sticky_2x"
-                        data-id="logo_sticky_2x"
-                        type="file"
-                        name="logo_sticky_2x"
+                            class="form-control item-img-x2"
+                            id="logo_sticky_2x"
+                            data-id="logo_sticky_2x"
+                            type="file"
+                            name="logo_sticky_2x"
                     >
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">{{ __('Dashboard Logo') }}</label>
                     <input
-                        class="form-control item-img-x2"
-                        id="logo_dashboard_2x"
-                        data-id="logo_dashboard_2x"
-                        type="file"
-                        name="logo_dashboard_2x"
+                            class="form-control item-img-x2"
+                            id="logo_dashboard_2x"
+                            data-id="logo_dashboard_2x"
+                            type="file"
+                            name="logo_dashboard_2x"
                     >
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">{{ __('Dashboard Logo (Dark)') }}</label>
                     <input
-                        class="form-control item-img-x2"
-                        id="logo_dashboard_dark_2x"
-                        data-id="logo_dashboard_dark_2x"
-                        type="file"
-                        name="logo_dashboard_dark_2x"
+                            class="form-control item-img-x2"
+                            id="logo_dashboard_dark_2x"
+                            data-id="logo_dashboard_dark_2x"
+                            type="file"
+                            name="logo_dashboard_dark_2x"
                     >
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">{{ __('Dashboard Logo Collapsed') }}</label>
                     <input
-                        class="form-control item-img-x2"
-                        id="logo_collapsed_2x"
-                        data-id="logo_collapsed_2x"
-                        type="file"
-                        name="logo_collapsed_2x"
+                            class="form-control item-img-x2"
+                            id="logo_collapsed_2x"
+                            data-id="logo_collapsed_2x"
+                            type="file"
+                            name="logo_collapsed_2x"
                     >
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">{{ __('Dashboard Logo Collapsed (Dark)') }}</label>
                     <input
-                        class="form-control item-img-x2"
-                        id="logo_collapsed_dark_2x"
-                        data-id="logo_collapsed_dark_2x"
-                        type="file"
-                        name="logo_collapsed_dark_2x"
+                            class="form-control item-img-x2"
+                            id="logo_collapsed_dark_2x"
+                            data-id="logo_collapsed_dark_2x"
+                            type="file"
+                            name="logo_collapsed_dark_2x"
                     >
                 </div>
             </div>
         </div>
 
+        <!-- Step 7 -->
         <x-form-step
-            class="mb-4 mt-5"
-            step="6"
-            label="{{ __('Seo Settings') }}"
+                class="mb-4 mt-5"
+                step="7"
+                label="{{ __('Seo Settings') }}"
         />
         <div class="row mb-4">
             <div class="col-md-12">
@@ -839,11 +864,11 @@
                     <label class="form-label">{{ __('Google Analytics Tracking ID') }} (UA-1xxxxx)
                         {{ __('or') }} (G-xxxxxx)</label>
                     <input
-                        class="form-control"
-                        id="google_analytics_code"
-                        type="text"
-                        name="google_analytics_code"
-                        value="{{ $setting->google_analytics_code }}"
+                            class="form-control"
+                            id="google_analytics_code"
+                            type="text"
+                            name="google_analytics_code"
+                            value="{{ $setting->google_analytics_code }}"
                     >
                 </div>
             </div>
@@ -853,18 +878,20 @@
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <label class="form-label m-0">{{ __('Meta Title') }}</label>
                         <select
-                            class="form-control min-w-36 m-0 bg-[#F1EDFF] py-1"
-                            id="metaTitleLocal"
-                            style="width: auto;"
-                            name="metaTitleLocal"
-                            onchange="handleSelectChangeLang('meta_title');"
+                                class="form-control min-w-36 m-0 bg-[#F1EDFF] py-1"
+                                id="metaTitleLocal"
+                                style="width: auto;"
+                                name="metaTitleLocal"
+                                onchange="handleSelectChangeLang('meta_title');"
                         >
                             @foreach (LaravelLocalization::getSupportedLocales() as $localeCode => $properties)
                                 @if (in_array($localeCode, explode(',', $settings_two->languages)))
                                     <option
-                                        class="p-0"
-                                        value="{{ $localeCode }}"
-                                        @if ($settings_two->languages_default === $localeCode) {{ 'selected' }} @endif
+                                            class="p-0"
+                                            value="{{ $localeCode }}"
+                                    @if ($settings_two->languages_default === $localeCode)
+                                        {{ 'selected' }}
+                                            @endif
                                     >
                                         <span class="!me-2 text-[21px]">{{ country2flag(substr($properties['regional'], strrpos($properties['regional'], '_') + 1)) }}</span>
                                         {{ ucfirst($properties['native']) }} @if ($settings_two->languages_default === $localeCode)
@@ -875,11 +902,11 @@
                         </select>
                     </div>
                     <input
-                        class="form-control {{ setting('serper_seo_site_meta', 0) == 1 ? 'input-seo' : '' }}"
-                        id="meta_title"
-                        type="text"
-                        name="meta_title"
-                        value="{{ $setting->meta_title }}"
+                            class="form-control {{ setting('serper_seo_site_meta', 0) == 1 ? 'input-seo' : '' }}"
+                            id="meta_title"
+                            type="text"
+                            name="meta_title"
+                            value="{{ $setting->meta_title }}"
                     >
                 </div>
             </div>
@@ -889,18 +916,20 @@
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <label class="form-label m-0">{{ __('Meta Description') }}</label>
                         <select
-                            class="form-control min-w-36 m-0 bg-[#F1EDFF] py-1"
-                            id="metaDescLocal"
-                            style="width: auto;"
-                            name="metaDescLocal"
-                            onchange="handleSelectChangeLang('meta_desc');"
+                                class="form-control min-w-36 m-0 bg-[#F1EDFF] py-1"
+                                id="metaDescLocal"
+                                style="width: auto;"
+                                name="metaDescLocal"
+                                onchange="handleSelectChangeLang('meta_desc');"
                         >
                             @foreach (LaravelLocalization::getSupportedLocales() as $localeCode => $properties)
                                 @if (in_array($localeCode, explode(',', $settings_two->languages)))
                                     <option
-                                        class="p-0"
-                                        value="{{ $localeCode }}"
-                                        @if ($settings_two->languages_default === $localeCode) {{ 'selected' }} @endif
+                                            class="p-0"
+                                            value="{{ $localeCode }}"
+                                    @if ($settings_two->languages_default === $localeCode)
+                                        {{ 'selected' }}
+                                            @endif
                                     >
                                         <span class="!me-2 text-[21px]">{{ country2flag(substr($properties['regional'], strrpos($properties['regional'], '_') + 1)) }}</span>
                                         {{ ucfirst($properties['native']) }} @if ($settings_two->languages_default === $localeCode)
@@ -911,10 +940,10 @@
                         </select>
                     </div>
                     <textarea
-                        class="form-control {{ setting('serper_seo_site_meta', 0) == 1 ? 'input-seo' : '' }}"
-                        id="meta_description"
-                        name="meta_description"
-                        rows="5"
+                            class="form-control {{ setting('serper_seo_site_meta', 0) == 1 ? 'input-seo' : '' }}"
+                            id="meta_description"
+                            name="meta_description"
+                            rows="5"
                     >{{ $setting->meta_description }}</textarea>
                 </div>
             </div>
@@ -923,20 +952,21 @@
                 <div class="mb-3">
                     <label class="form-label">{{ __('Meta Keywords') }}</label>
                     <textarea
-                        class="form-control {{ setting('serper_seo_site_meta', 0) == 1 ? 'input-seo' : '' }}"
-                        id="meta_keywords"
-                        name="meta_keywords"
-                        placeholder="{{ __('ChatGPT, AI Writer, AI Image Generator, AI Chat') }}"
-                        rows="3"
+                            class="form-control {{ setting('serper_seo_site_meta', 0) == 1 ? 'input-seo' : '' }}"
+                            id="meta_keywords"
+                            name="meta_keywords"
+                            placeholder="{{ __('ChatGPT, AI Writer, AI Image Generator, AI Chat') }}"
+                            rows="3"
                     >{{ $setting->meta_keywords }}</textarea>
                 </div>
             </div>
         </div>
 
+        <!-- Step 8 -->
         <x-form-step
-            class="mb-4 mt-5"
-            step="7"
-            label="{{ __('Advanced Settings') }}"
+                class="mb-4 mt-5"
+                step="8"
+                label="{{ __('Advanced Settings') }}"
         />
         <div class="row mb-4">
             <div class="col-md-12">
@@ -946,9 +976,9 @@
                         <x-info-tooltip text="{{ __('Only accepts javascript code wrapped with <script> tags and HTML markup that is valid inside the </head> tag.') }}" />
                     </label>
                     <textarea
-                        class="form-control"
-                        id="dashboard_code_before_head"
-                        name="dashboard_code_before_head"
+                            class="form-control"
+                            id="dashboard_code_before_head"
+                            name="dashboard_code_before_head"
                     >{{ $setting->dashboard_code_before_head }}</textarea>
                 </div>
             </div>
@@ -960,207 +990,216 @@
                         <x-info-tooltip text="{{ __('Only accepts javascript code wrapped with <script> tags and HTML markup that is valid inside the </body> tag.') }}" />
                     </label>
                     <textarea
-                        class="form-control"
-                        id="dashboard_code_before_body"
-                        name="dashboard_code_before_body"
+                            class="form-control"
+                            id="dashboard_code_before_body"
+                            name="dashboard_code_before_body"
                     >{{ $setting->dashboard_code_before_body }}</textarea>
                 </div>
             </div>
         </div>
 
+        <!-- Step 9 -->
         <x-form-step
-            class="mb-4 mt-5"
-            step="8"
-            label="{{ __('Manage the Features') }}"
+                class="mb-4 mt-5"
+                step="9"
+                label="{{ __('Manage the Features') }}"
         />
         <div class="row mb-4">
             <div class="mb-3">
                 <div class="form-label">{{ __('Manage the features you want to activate for users.') }}</div>
                 <x-forms.input
-                    class:container="mb-2"
-                    id="feature_ai_writer"
-                    type="checkbox"
-                    :checked="$setting->feature_ai_writer == 1"
-                    label="{{ __('AI Writer') }}"
-                    switcher
+                        class:container="mb-2"
+                        id="feature_ai_writer"
+                        type="checkbox"
+                        :checked="$setting->feature_ai_writer == 1"
+                        label="{{ __('AI Writer') }}"
+                        switcher
                 />
                 <x-forms.input
-                    class:container="mb-2"
-                    id="feature_ai_advanced_editor"
-                    type="checkbox"
-                    :checked="$setting->feature_ai_advanced_editor == 1"
-                    label="{{ __('AI advanced editor') }}"
-                    switcher
+                        class:container="mb-2"
+                        id="feature_ai_advanced_editor"
+                        type="checkbox"
+                        :checked="$setting->feature_ai_advanced_editor == 1"
+                        label="{{ __('AI advanced editor') }}"
+                        switcher
                 />
                 <x-forms.input
-                    class:container="mb-2"
-                    id="feature_ai_image"
-                    type="checkbox"
-                    :checked="$setting->feature_ai_image == 1"
-                    label="{{ __('AI Image') }}"
-                    switcher
+                        class:container="mb-2"
+                        id="feature_ai_image"
+                        type="checkbox"
+                        :checked="$setting->feature_ai_image == 1"
+                        label="{{ __('AI Image') }}"
+                        switcher
                 />
                 <x-forms.input
-                    class:container="mb-2"
-                    id="feature_ai_video"
-                    type="checkbox"
-                    :checked="$settings_two->feature_ai_video == 1"
-                    label="{{ __('AI Video') }}"
-                    switcher
+                        class:container="mb-2"
+                        id="feature_ai_video"
+                        type="checkbox"
+                        :checked="$settings_two->feature_ai_video == 1"
+                        label="{{ __('AI Video') }}"
+                        switcher
                 />
                 <x-forms.input
-                    class:container="mb-2"
-                    id="feature_ai_chat"
-                    type="checkbox"
-                    :checked="$setting->feature_ai_chat == 1"
-                    label="{{ __('AI Chat') }}"
-                    switcher
+                        class:container="mb-2"
+                        id="feature_ai_chat"
+                        type="checkbox"
+                        :checked="$setting->feature_ai_chat == 1"
+                        label="{{ __('AI Chat') }}"
+                        switcher
                 />
                 <x-forms.input
-                    class:container="mb-2"
-                    id="feature_ai_code"
-                    type="checkbox"
-                    :checked="$setting->feature_ai_code == 1"
-                    label="{{ __('AI Code') }}"
-                    switcher
+                        class:container="mb-2"
+                        id="feature_ai_code"
+                        type="checkbox"
+                        :checked="$setting->feature_ai_code == 1"
+                        label="{{ __('AI Code') }}"
+                        switcher
                 />
                 <x-forms.input
-                    class:container="mb-2"
-                    id="feature_ai_speech_to_text"
-                    type="checkbox"
-                    :checked="$setting->feature_ai_speech_to_text == 1"
-                    label="{{ __('AI Speech to Text') }}"
-                    switcher
+                        class:container="mb-2"
+                        id="feature_ai_speech_to_text"
+                        type="checkbox"
+                        :checked="$setting->feature_ai_speech_to_text == 1"
+                        label="{{ __('AI Speech to Text') }}"
+                        switcher
                 />
                 <x-forms.input
-                    class:container="mb-2"
-                    id="feature_ai_voiceover"
-                    type="checkbox"
-                    :checked="$setting->feature_ai_voiceover == 1"
-                    label="{{ __('AI Voiceover') }}"
-                    switcher
+                        class:container="mb-2"
+                        id="feature_ai_voiceover"
+                        type="checkbox"
+                        :checked="$setting->feature_ai_voiceover == 1"
+                        label="{{ __('AI Voiceover') }}"
+                        switcher
                 />
                 <x-forms.input
-                    class:container="mb-2"
-                    id="feature_affilates"
-                    type="checkbox"
-                    :checked="$setting->feature_affilates == 1"
-                    label="{{ __('Affilates') }}"
-                    switcher
+                        class:container="mb-2"
+                        id="feature_affilates"
+                        type="checkbox"
+                        :checked="$setting->feature_affilates == 1"
+                        label="{{ __('Affilates') }}"
+                        switcher
                 />
                 <x-forms.input
-                    class:container="mb-2"
-                    id="feature_ai_article_wizard"
-                    type="checkbox"
-                    :checked="$setting->feature_ai_article_wizard == 1"
-                    label="{{ __('Article Wizard') }}"
-                    switcher
+                        class:container="mb-2"
+                        id="feature_ai_article_wizard"
+                        type="checkbox"
+                        :checked="$setting->feature_ai_article_wizard == 1"
+                        label="{{ __('Article Wizard') }}"
+                        switcher
                 />
                 <x-forms.input
-                    class:container="mb-2"
-                    id="feature_ai_vision"
-                    type="checkbox"
-                    :checked="$setting->feature_ai_vision == 1"
-                    label="{{ __('AI Vision') }}"
-                    switcher
+                        class:container="mb-2"
+                        id="feature_ai_vision"
+                        type="checkbox"
+                        :checked="$setting->feature_ai_vision == 1"
+                        label="{{ __('AI Vision') }}"
+                        switcher
                 />
                 <x-forms.input
-                    class:container="mb-2"
-                    id="feature_ai_chat_image"
-                    type="checkbox"
-                    :checked="$setting->feature_ai_chat_image == 1"
-                    label="{{ __('Chat Image') }}"
-                    switcher
+                        class:container="mb-2"
+                        id="feature_ai_chat_image"
+                        type="checkbox"
+                        :checked="$setting->feature_ai_chat_image == 1"
+                        label="{{ __('Chat Image') }}"
+                        switcher
                 />
                 <x-forms.input
-                    class:container="mb-2"
-                    id="feature_ai_pdf"
-                    type="checkbox"
-                    :checked="$setting->feature_ai_pdf == 1"
-                    label="{{ __('AI File Chat') }}"
-                    switcher
+                        class:container="mb-2"
+                        id="feature_ai_pdf"
+                        type="checkbox"
+                        :checked="$setting->feature_ai_pdf == 1"
+                        label="{{ __('AI File Chat') }}"
+                        switcher
                 />
                 <x-forms.input
-                    class:container="mb-2"
-                    id="feature_ai_rewriter"
-                    type="checkbox"
-                    :checked="$setting->feature_ai_rewriter == 1"
-                    label="{{ __('AI Rewriter') }}"
-                    switcher
+                        class:container="mb-2"
+                        id="feature_ai_rewriter"
+                        type="checkbox"
+                        :checked="$setting->feature_ai_rewriter == 1"
+                        label="{{ __('AI Rewriter') }}"
+                        switcher
                 />
                 <x-forms.input
-                    class:container="mb-2"
-                    id="feature_ai_youtube"
-                    type="checkbox"
-                    :checked="$setting->feature_ai_youtube == 1"
-                    label="{{ __('AI YouTube') }}"
-                    switcher
+                        class:container="mb-2"
+                        id="feature_ai_youtube"
+                        type="checkbox"
+                        :checked="$setting->feature_ai_youtube == 1"
+                        label="{{ __('AI YouTube') }}"
+                        switcher
                 />
                 <x-forms.input
-                    class:container="mb-2"
-                    id="feature_ai_rss"
-                    type="checkbox"
-                    :checked="$setting->feature_ai_rss == 1"
-                    label="{{ __('AI RSS') }}"
-                    switcher
+                        class:container="mb-2"
+                        id="feature_ai_rss"
+                        type="checkbox"
+                        :checked="$setting->feature_ai_rss == 1"
+                        label="{{ __('AI RSS') }}"
+                        switcher
                 />
                 <x-forms.input
-                    class:container="mb-2"
-                    id="feature_ai_voice_clone"
-                    type="checkbox"
-                    :checked="$setting->feature_ai_voice_clone == 1"
-                    label="{{ __('AI VoiceClone') }}"
-                    switcher
+                        class:container="mb-2"
+                        id="feature_ai_voice_clone"
+                        type="checkbox"
+                        :checked="$setting->feature_ai_voice_clone == 1"
+                        label="{{ __('AI VoiceClone') }}"
+                        switcher
                 />
                 <x-forms.input
-                    class:container="mb-2"
-                    id="team_functionality"
-                    type="checkbox"
-                    :checked="$setting->team_functionality == 1"
-                    label="{{ __('Team Functionality') }}"
-                    switcher
+                        class:container="mb-2"
+                        id="team_functionality"
+                        type="checkbox"
+                        :checked="$setting->team_functionality == 1"
+                        label="{{ __('Team Functionality') }}"
+                        switcher
                 />
                 @if ($chatSetting)
                     <x-forms.input
-                        class:container="mb-2"
-                        id="chat_setting_for_customer"
-                        type="checkbox"
-                        :checked="setting('chat_setting_for_customer', '1') == '1'"
-                        label="{{ __('Chat Setting (Extension)') }}"
-                        switcher
+                            class:container="mb-2"
+                            id="chat_setting_for_customer"
+                            type="checkbox"
+                            :checked="setting('chat_setting_for_customer', '1') == '1'"
+                            label="{{ __('Chat Setting (Extension)') }}"
+                            switcher
                     />
                 @endif
                 <x-forms.input
-                    class:container="mb-2"
-                    id="user_prompt_library"
-                    type="checkbox"
-                    :checked="setting('user_prompt_library') == 1 || setting('user_prompt_library') == null"
-                    label="{{ __('AI Chat Prompt Library') }}"
-                    switcher
+                        class:container="mb-2"
+                        id="user_prompt_library"
+                        type="checkbox"
+                        :checked="setting('user_prompt_library') == 1 || setting('user_prompt_library') == null"
+                        label="{{ __('AI Chat Prompt Library') }}"
+                        switcher
                 />
                 <x-forms.input
-                    class:container="mb-2"
-                    id="user_ai_image_prompt_library"
-                    type="checkbox"
-                    :checked="setting('user_ai_image_prompt_library') == 1 || setting('user_ai_image_prompt_library') == null"
-                    label="{{ __('AI Image Prompt Library') }}"
-                    switcher
+                        class:container="mb-2"
+                        id="user_ai_image_prompt_library"
+                        type="checkbox"
+                        :checked="setting('user_ai_image_prompt_library') == 1 || setting('user_ai_image_prompt_library') == null"
+                        label="{{ __('AI Image Prompt Library') }}"
+                        switcher
                 />
                 <x-forms.input
-                    class:container="mb-2"
-                    id="ai_voice_isolator"
-                    type="checkbox"
-                    :checked="setting('ai_voice_isolator', '1') == '1'"
-                    label="{{ __('AI Voice Isolator') }}"
-                    switcher
+                        class:container="mb-2"
+                        id="ai_voice_isolator"
+                        type="checkbox"
+                        :checked="setting('ai_voice_isolator', '1') == '1'"
+                        label="{{ __('AI Voice Isolator') }}"
+                        switcher
                 />
-                @includeIf('default.panel.admin.settings.particles.photo-studio-general-setting')
+                <x-forms.input
+                        class:container="mb-2"
+                        id="select_model_option"
+                        type="checkbox"
+                        :checked="setting('select_model_option', '0') == '1'"
+                        label="{{ __('Select Model Option') }}"
+                        switcher
+                />
+                @includeFirst(['photo-studio::particles.photo-studio-general-setting','default.panel.admin.settings.particles.photo-studio-general-setting','vendor.empty'])
             </div>
         </div>
         <h3 class="mb-[25px] mt-7 text-[20px]">{{ __('AI Writer Users Custom Templates') }}
             <x-badge
-                class="ms-2 text-2xs"
-                variant="secondary"
+                    class="ms-2 text-2xs"
+                    variant="secondary"
             >
                 @lang('New')
             </x-badge>
@@ -1171,15 +1210,14 @@
                     {{ __('Upon activating this feature, the users will be able to create there own custom templates.') }}
                 </div>
                 <x-forms.input
-                    id="user_ai_writer_custom_templates"
-                    type="checkbox"
-                    :checked="setting('user_ai_writer_custom_templates', 1) == 1"
-                    switcher
-                    label="{{ __('Users Custom AI Writer Templates') }}"
+                        id="user_ai_writer_custom_templates"
+                        type="checkbox"
+                        :checked="setting('user_ai_writer_custom_templates', 1) == 1"
+                        switcher
+                        label="{{ __('Users Custom AI Writer Templates') }}"
                 />
             </div>
         </div>
-
         <h3 class="mb-[25px] mt-7 text-[20px]">{{ __('Users API Key Option') }}</h3>
         <div class="row mb-4">
             <div class="mb-3">
@@ -1187,75 +1225,111 @@
                     {{ __('Upon activating this feature, the admin API key will be deactivated, and users will need to input their own API keys for continued functionality.') }}
                 </div>
                 <x-forms.input
-                    id="user_api_option"
-                    type="checkbox"
-                    :checked="$setting?->user_api_option == 1"
-                    switcher
-                    label="{{ __('Convert To Users Api') }}"
+                        id="user_api_option"
+                        type="checkbox"
+                        :checked="$setting?->user_api_option == 1"
+                        switcher
+                        label="{{ __('Convert To Users API') }}"
                 />
             </div>
         </div>
 
-        <h3 class="mb-[25px] mt-7 text-[20px]">{{ __('Mobile Settings') }}</h3>
+        <!-- Step 10 -->
+        <x-form-step
+                class="mb-4 mt-5"
+                step="10"
+                label="{{ __('Mobile Settings') }}"
+        />
         <div class="row mb-4">
             <div class="mb-3">
                 <div class="form-label">
-                    {{ __('This setting is in early alpha stage. Please do not activate until offically released.') }}
+                    {{ __('These settings are for the mobile app. You can ask for a demo to our representatives.') }}
                 </div>
                 <x-forms.input
-                    id="mobile_payment_active"
-                    type="checkbox"
-                    :checked="$setting?->mobile_payment_active == 1"
-                    switcher
-                    label="{{ __('Mobile Payment') }}"
+                        id="mobile_payment_active"
+                        type="checkbox"
+                        :checked="$setting?->mobile_payment_active == 1"
+                        switcher
+                        label="{{ __('Mobile Payment') }}"
                 />
+            </div>
+        </div>
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="mb-4">
+                    <label class="form-label">{{ __('Mr Robot Name') }}</label>
+                    <input
+                            class="form-control"
+                            id="mrrobot_name"
+                            type="text"
+                            name="mrrobot_name"
+                            placeholder="{{ __('Mr Robot') }}"
+                            value="{{ $setting->mrrobot_name }}"
+                    >
+                </div>
+            </div>
+        </div>
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="mb-3">
+                    <label class="form-label">{{ __('Mr Robot Search Words') }}
+                        <x-info-tooltip text="{{ __('These words will be used as search default values of the Mr Robot. Separate your content with comma.') }}" />
+                    </label>
+                    <textarea
+                            class="form-control"
+                            id="mrrobot_search_words"
+                            name="mrrobot_search_words"
+                            placeholder="{{ __('Product Description,Interior Designer') }}"
+                            rows="3"
+                    >{{ $setting->mrrobot_search_words }}</textarea>
+                </div>
             </div>
         </div>
 
         <x-button
-            class="w-full"
-            id="settings_button"
-            size="lg"
-            type="submit"
+                class="w-full"
+                id="settings_button"
+                size="lg"
+                type="submit"
         >
             {{ __('Save') }}
         </x-button>
     </form>
 
     <div
-        class="modal fade"
-        id="cropImagePop"
-        tabindex="-1"
-        role="dialog"
-        aria-labelledby="myModalLabel"
-        aria-hidden="true"
+            class="modal fade"
+            id="cropImagePop"
+            tabindex="-1"
+            role="dialog"
+            aria-labelledby="myModalLabel"
+            aria-hidden="true"
     >
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
                     <button
-                        class="close"
-                        data-bs-dismiss="modal"
-                        type="button"
-                        aria-label="Close"
+                            class="close"
+                            data-bs-dismiss="modal"
+                            type="button"
+                            aria-label="Close"
                     ><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body text-center">
                     <div
-                        class="center-block"
-                        id="upload-demo"
+                            class="center-block"
+                            id="upload-demo"
                     ></div>
                 </div>
                 <div class="modal-footer">
                     <button
-                        class="btn btn-default"
-                        data-bs-dismiss="modal"
-                        type="button"
+                            class="btn btn-default"
+                            data-bs-dismiss="modal"
+                            type="button"
                     >{{ __('Cancel and upload the image without cropping') }}</button>
                     <button
-                        class="btn btn-primary"
-                        id="cropImageBtn"
-                        type="button"
+                            class="btn btn-primary"
+                            id="cropImageBtn"
+                            type="button"
                     >{{ __('Crop') }}</button>
                 </div>
             </div>
@@ -1267,15 +1341,15 @@
 @push('script')
     <script src="{{ custom_theme_url('/assets/js/panel/settings.js?v=' . time()) }} }}"></script>
     <script
-        src="{{ custom_theme_url('/assets/libs/ace/src-min-noconflict/ace.js') }}"
-        type="text/javascript"
-        charset="utf-8"
+            src="{{ custom_theme_url('/assets/libs/ace/src-min-noconflict/ace.js') }}"
+            type="text/javascript"
+            charset="utf-8"
     ></script>
     <script src="{{ custom_theme_url('https://foliotek.github.io/Croppie/croppie.js') }}"></script>
 
     <style
-        type="text/css"
-        media="screen"
+            type="text/css"
+            media="screen"
     >
         .ace_editor {
             min-height: 200px;
@@ -1302,7 +1376,7 @@
                     type: type,
                     lang: lang
                 },
-                success: function(response) {
+                success: function (response) {
                     var content = response.content;
                     var inputId = response.type === "meta_title" ? "meta_title" : "meta_description";
                     if (content !== null) {
@@ -1311,14 +1385,15 @@
                         $("#" + inputId).val('');
                     }
                 },
-                error: function(data) {
+                error: function (data) {
                     var err = data.responseJSON.errors;
-                    $.each(err, function(index, value) {
+                    $.each(err, function (index, value) {
                         toastr.error(value);
                     });
                 }
             });
         }
+
         // on page first load
         handleSelectChangeLang('meta_title');
         handleSelectChangeLang('meta_desc');
@@ -1330,7 +1405,7 @@
         function readFile(input) {
             if (input.files && input.files[0]) {
                 var reader = new FileReader();
-                reader.onload = function(e) {
+                reader.onload = function (e) {
                     $('.upload-demo').addClass('ready');
                     $('#cropImagePop').modal('show');
                     rawImg = e.target.result;
@@ -1340,6 +1415,7 @@
                 swal("Sorry - you're browser doesn't support the FileReader API");
             }
         }
+
         $uploadCrop = $('#upload-demo').croppie({
             viewport: {
                 width: viewportWidth,
@@ -1348,14 +1424,14 @@
             enforceBoundary: false,
             enableExif: true
         });
-        $('#cropImagePop').on('shown.bs.modal', function() {
+        $('#cropImagePop').on('shown.bs.modal', function () {
             $uploadCrop.croppie('bind', {
                 url: rawImg
-            }).then(function() {
+            }).then(function () {
                 console.log('jQuery bind complete');
             });
         });
-        $('.item-img, .item-img-x2').on('change', function() {
+        $('.item-img, .item-img-x2').on('change', function () {
             if ($(this).hasClass('item-img-x2')) {
                 viewportWidth = 320;
                 viewportHeight = 140;
@@ -1386,14 +1462,14 @@
             $('#cancelCropBtn').data('id', imageId);
             readFile(this);
         });
-        $('#cropImageBtn').on('click', function(ev) {
+        $('#cropImageBtn').on('click', function (ev) {
             $uploadCrop.croppie('result', {
                 type: 'blob',
                 size: {
                     width: viewportWidth,
                     height: viewportHeight
                 }
-            }).then(function(resp) {
+            }).then(function (resp) {
                 var newInput = document.createElement('input');
                 newInput.type = 'file';
                 newInput.className = 'form-control item-img';
@@ -1413,13 +1489,13 @@
 
         var limitCheckbox = document.getElementById('limit');
         var countField = document.getElementById('countField');
-        limitCheckbox.addEventListener('change', function() {
+        limitCheckbox.addEventListener('change', function () {
             countField.style.display = limitCheckbox.checked ? '' : 'none';
         });
 
         var voice_limit_checkbox = document.getElementById('voice_limit');
         var voiceCountField = document.getElementById('voiceCountField');
-        voice_limit_checkbox.addEventListener('change', function() {
+        voice_limit_checkbox.addEventListener('change', function () {
             voiceCountField.style.display = voice_limit_checkbox.checked ? '' : 'none';
         });
     </script>

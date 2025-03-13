@@ -5,12 +5,18 @@ namespace App\Helpers\Classes;
 use App\Models;
 use App\Models\OpenAIGenerator;
 use App\Services\Common\MenuService;
-use Database\Seeders\AIModelSeeder;
+use Database\Seeders\AdminPermissionSeeder;
+use Database\Seeders\EngineSeeder;
+use Database\Seeders\EntitySeeder;
 use Database\Seeders\IntroductionSeeder;
 use Database\Seeders\MenuSeeder;
+use Database\Seeders\PermissionSeeder;
+use Database\Seeders\RoleSeeder;
 use Database\Seeders\SocialAccountsSeeder;
-use Database\Seeders\VoiceIsolatorSeeder;
 use Database\Seeders\TokenSeeder;
+use Database\Seeders\VoiceIsolatorSeeder;
+use Exception;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -20,7 +26,7 @@ class InstallationHelper
 {
     public static function runInstallation(): void
     {
-        $installationData = InstallationHelper::data();
+        $installationData = self::data();
 
         foreach ($installationData as $key => $value) {
             if (isset($value['table'])) {
@@ -86,10 +92,10 @@ class InstallationHelper
         return [
             [
                 'table' => 'openai_filters',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => DB::table('openai_filters')->count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/openai_filters.sql',
                         ],
                     ],
@@ -97,10 +103,10 @@ class InstallationHelper
             ],
             [
                 'table' => 'openai',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Models\OpenAIGenerator::count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/openai_table.sql',
                         ],
                     ],
@@ -108,10 +114,10 @@ class InstallationHelper
             ],
             [
                 'table' => 'openai',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => false,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/new_openai_table_templates.sql',
                         ],
                     ],
@@ -119,10 +125,10 @@ class InstallationHelper
             ],
             [
                 'table' => 'frontend_tools',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Models\FrontendTools::count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/frontend_tools.sql',
                         ],
                     ],
@@ -130,10 +136,10 @@ class InstallationHelper
             ],
             [
                 'table' => 'faq',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Models\Faq::count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/faq.sql',
                         ],
                     ],
@@ -141,10 +147,10 @@ class InstallationHelper
             ],
             [
                 'table' => 'frontend_future',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Models\FrontendFuture::count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/frontend_future.sql',
                         ],
                     ],
@@ -152,10 +158,10 @@ class InstallationHelper
             ],
             [
                 'table' => 'howitworks',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Models\HowitWorks::count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/howitworks.sql',
                         ],
                     ],
@@ -163,10 +169,10 @@ class InstallationHelper
             ],
             [
                 'table' => 'testimonials',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Models\Testimonials::count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/testimonials.sql',
                         ],
                     ],
@@ -174,10 +180,10 @@ class InstallationHelper
             ],
             [
                 'table' => 'frontend_who_is_for',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Models\FrontendForWho::count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/frontend_who_is_for.sql',
                         ],
                     ],
@@ -185,10 +191,10 @@ class InstallationHelper
             ],
             [
                 'table' => 'frontend_generators',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Models\FrontendGenerators::count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/frontend_generators.sql',
                         ],
                     ],
@@ -196,10 +202,10 @@ class InstallationHelper
             ],
             [
                 'table' => 'clients',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Models\Clients::count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/clients.sql',
                         ],
                     ],
@@ -207,32 +213,21 @@ class InstallationHelper
             ],
             [
                 'table' => 'chatbot',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Models\Chatbot\Chatbot::count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/chatbot.sql',
                         ],
                     ],
                 ],
             ],
             [
-                'table' => ! Schema::hasTable('health_check_result_history_items'),
-                'sql' => [
-                    [
-                        'condition' => true,
-                        'files' => [
-                            'dev_tools/health_check_result_history_items.sql',
-                        ],
-                    ],
-                ],
-            ],
-            [
                 'table' => 'email_templates',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Models\EmailTemplates::count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/email_templates.sql',
                         ],
                     ],
@@ -240,10 +235,10 @@ class InstallationHelper
             ],
             [
                 'table' => 'ads',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Models\Ad::count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/ads.sql',
                         ],
                     ],
@@ -251,52 +246,52 @@ class InstallationHelper
             ],
             [
                 'table' => 'openai',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Models\OpenAIGenerator::where('slug', 'ai_article_wizard_generator')->count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/ai_wizard.sql',
                         ],
                     ],
                     [
                         'condition' => Models\OpenAIGenerator::where('slug', 'ai_vision')->count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/ai_vision.sql',
                         ],
                     ],
                     [
                         'condition' => Models\OpenAIGenerator::where('slug', 'ai_pdf')->count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/ai_pdf.sql',
                         ],
                     ],
                     [
                         'condition' => Models\OpenAIGenerator::where('slug', 'ai_chat_image')->count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/ai_chat_image.sql',
                         ],
                     ],
                     [
                         'condition' => Models\OpenAIGenerator::where('slug', 'ai_rewriter')->count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/ai_rewriter.sql',
                         ],
                     ],
                     [
                         'condition' => Models\OpenAIGenerator::where('slug', 'ai_webchat')->count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/ai_webchat.sql',
                         ],
                     ],
                     [
                         'condition' => Models\OpenAIGenerator::where('slug', 'ai_pdf')->count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/ai_filechat.sql',
                         ],
                     ],
                     [
                         'condition' => Models\OpenAIGenerator::where('slug', 'ai_video')->count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/ai_video.sql',
                         ],
                     ],
@@ -304,35 +299,35 @@ class InstallationHelper
             ],
             [
                 'table' => 'openai_chat_category',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Models\OpenaiGeneratorChatCategory::count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/openai_chat_categories_table.sql',
                         ],
                     ],
                     [
                         'condition' => Models\OpenaiGeneratorChatCategory::where('slug', 'ai_vision')->count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/ai_vision2.sql',
                         ],
                     ],
                     [
                         'condition' => Models\OpenaiGeneratorChatCategory::where('slug', 'ai_pdf')->count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/ai_pdf2.sql',
                             'dev_tools/ai_filechat2.sql',
                         ],
                     ],
                     [
                         'condition' => Models\OpenaiGeneratorChatCategory::where('slug', 'ai_chat_image')->count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/ai_chat_image2.sql',
                         ],
                     ],
                     [
                         'condition' => Models\OpenaiGeneratorChatCategory::where('slug', 'ai_webchat')->count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/ai_webchat2.sql',
                         ],
                     ],
@@ -340,10 +335,10 @@ class InstallationHelper
             ],
             [
                 'table' => 'email_templates',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Models\EmailTemplates::count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/team_email_templates.sql',
                         ],
                     ],
@@ -351,13 +346,13 @@ class InstallationHelper
             ],
             [
                 'table' => 'plans',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Schema::hasColumn('plans', 'open_ai_items') && Schema::hasTable('openai'),
-                        'callback' => function () {
+                        'callback'  => function () {
                             $openaiItems = Models\OpenAIGenerator::query()->pluck('slug')->toArray();
 
-                            $plans = Models\PaymentPlans::query()->get();
+                            $plans = Models\Plan::query()->get();
 
                             foreach ($plans as $plan) {
                                 $plan->open_ai_items = $openaiItems;
@@ -369,10 +364,10 @@ class InstallationHelper
             ],
             [
                 'table' => 'openai',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Schema::hasTable('settings') && Schema::hasColumn('settings', 'free_open_ai_items'),
-                        'callback' => function () {
+                        'callback'  => function () {
                             $openaiItems = Models\OpenAIGenerator::query()->pluck('slug')->toArray();
                             $setting = Models\Setting::first();
 
@@ -385,10 +380,10 @@ class InstallationHelper
             ],
             [
                 'table' => (new Models\Page)->getTable(),
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Models\Page::where('is_custom', 1)->count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/inner_pages.sql',
                         ],
                     ],
@@ -396,10 +391,10 @@ class InstallationHelper
             ],
             [
                 'table' => (new Models\Currency)->getTable(),
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Models\Currency::count() === 0,
-                        'files' => [
+                        'files'     => [
                             'dev_tools/currency.sql',
                         ],
                     ],
@@ -407,10 +402,10 @@ class InstallationHelper
             ],
             [
                 'table' => 'openai',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => ! OpenAIGenerator::where('slug', 'ai_voiceover')->exists(),
-                        'files' => [
+                        'files'     => [
                             'dev_tools/ai_voiceover.sql',
                             'dev_tools/ai_filter_voiceover.sql',
                         ],
@@ -419,10 +414,10 @@ class InstallationHelper
             ],
             [
                 'table' => 'openai',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => ! OpenAIGenerator::where('slug', 'ai_youtube')->exists(),
-                        'files' => [
+                        'files'     => [
                             'dev_tools/ai_youtube.sql',
                             'dev_tools/ai_filter_youtube.sql',
                         ],
@@ -431,10 +426,10 @@ class InstallationHelper
             ],
             [
                 'table' => 'openai',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => ! OpenAIGenerator::where('slug', 'ai_rss')->exists(),
-                        'files' => [
+                        'files'     => [
                             'dev_tools/ai_rss.sql',
                             'dev_tools/ai_filter_rss.sql',
                         ],
@@ -443,37 +438,21 @@ class InstallationHelper
             ],
             [
                 'table' => 'integrations',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Models\Integration\Integration::query()->where('slug', 'wordpress')->doesntExist(),
-                        'files' => [
+                        'files'     => [
                             'dev_tools/integrations/wordpress.sql',
                         ],
                     ],
                 ],
             ],
             [
-                'table' => 'integrations',
-                'sql' => [
-                    [
-                        'condition' => Models\Integration\Integration::query()->where('slug', 'wordpress')->exists(),
-                        'callback' => function () {
-                            try {
-                                Models\Integration\Integration::query()->where('slug', 'wordpress')->update([
-                                    'image' => 'images/integrations/wordpress.png',
-                                ]);
-                            } catch (\Exception $e) {
-                            }
-                        },
-                    ],
-                ],
-            ],
-            [
                 'table' => 'settings_two',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Models\SettingTwo::query()->whereNotNull('liquid_license_domain_key')->exists(),
-                        'callback' => function () {
+                        'callback'  => function () {
                             try {
                                 $check = Helper::settingTwo('liquid_license_domain_key');
 
@@ -482,7 +461,7 @@ class InstallationHelper
                                         $check, true
                                     );
                                 }
-                            } catch (\Exception $e) {
+                            } catch (Exception $e) {
                             }
                         },
                     ],
@@ -490,27 +469,60 @@ class InstallationHelper
             ],
             [
                 'table' => 'menus',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => true,
-                        'callback' => function () {
+                        'callback'  => function () {
                             try {
                                 app(MenuSeeder::class)->run();
-                            } catch (\Exception $exception) {
+
+                                Models\Common\Menu::query()->where('key', 'config')->update([
+                                    'order' => 0,
+                                ]);
+
+                                Models\Common\Menu::query()->where('key', 'cloudflare_r2_extension')->update([
+                                    'order' => 1,
+                                ]);
+                                Models\Common\Menu::query()->where('key', 'maintenance_setting')->update([
+                                    'order' => 2,
+                                ]);
+                                Models\Common\Menu::query()->where('key', 'ai_chat_models')->update([
+                                    'order' => 3,
+                                ]);
+                                Models\Common\Menu::query()->where('key', 'ext_chat_bot')->update([
+                                    'label' => 'AI Bots',
+                                    'order' => 2,
+                                ]);
+
+                            } catch (Exception $exception) {
                             }
                         },
                     ],
                 ],
             ],
             [
-                'table' => 'ai_models',
-                'sql' => [
+                'table' => 'entities',
+                'sql'   => [
                     [
                         'condition' => true,
-                        'callback' => function () {
+                        'callback'  => function () {
                             try {
-                                app(AIModelSeeder::class)->run();
-                            } catch (\Exception $exception) {
+                                app(EntitySeeder::class)->run();
+                            } catch (Exception $exception) {
+                            }
+                        },
+                    ],
+                ],
+            ],
+            [
+                'table' => 'engines',
+                'sql'   => [
+                    [
+                        'condition' => true,
+                        'callback'  => function () {
+                            try {
+                                app(EngineSeeder::class)->run();
+                            } catch (Exception $exception) {
                             }
                         },
                     ],
@@ -518,13 +530,13 @@ class InstallationHelper
             ],
             [
                 'table' => 'tokens',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => true,
-                        'callback' => function () {
+                        'callback'  => function () {
                             try {
                                 app(TokenSeeder::class)->run();
-                            } catch (\Exception $exception) {
+                            } catch (Exception $exception) {
                             }
                         },
                     ],
@@ -532,13 +544,13 @@ class InstallationHelper
             ],
             [
                 'table' => 'social_media_accounts',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => true,
-                        'callback' => function () {
+                        'callback'  => function () {
                             try {
                                 app(SocialAccountsSeeder::class)->run();
-                            } catch (\Exception $exception) {
+                            } catch (Exception $exception) {
                             }
                         },
                     ],
@@ -546,10 +558,10 @@ class InstallationHelper
             ],
             [
                 'table' => 'menus',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => true,
-                        'callback' => function () {
+                        'callback'  => function () {
                             try {
                                 Models\Common\Menu::query()
                                     ->where([
@@ -564,6 +576,77 @@ class InstallationHelper
                                         'route' => 'default',
                                     ]);
 
+                                Models\Common\Menu::query()
+                                    ->where([
+                                        'key' => 'ai_chat_all',
+                                    ])->update([
+                                        'route' => 'dashboard.user.openai.chat.list',
+                                    ]);
+
+                                Models\Common\Menu::query()
+                                    ->where([
+                                        'key' => 'membership_plans',
+                                    ])->update([
+                                        'label' => 'Membership Plans (old version)',
+                                    ]);
+
+                                Models\Common\Menu::query()
+                                    ->where([
+                                        'key' => 'admin_finance_plan',
+                                    ])->update([
+                                        'label' => 'Membership Plans',
+                                    ]);
+
+                                Models\Common\Menu::query()
+                                    ->where([
+                                        'key' => 'storage',
+                                    ])->delete();
+
+                                Models\Common\Menu::query()
+                                    ->where([
+                                        'key' => 'languages',
+                                    ])->delete();
+
+                                Models\Common\Menu::query()
+                                    ->where([
+                                        'key' => 'smtp',
+                                    ])->delete();
+
+                                Models\Common\Menu::query()
+                                    ->where([
+                                        'key' => 'gdpr',
+                                    ])->delete();
+
+                                Models\Common\Menu::query()
+                                    ->where([
+                                        'key' => 'affiliate_setting',
+                                    ])->delete();
+
+                                Models\Common\Menu::query()
+                                    ->where([
+                                        'key' => 'invoice',
+                                    ])->delete();
+
+                                Models\Common\Menu::query()
+                                    ->where([
+                                        'key' => 'general',
+                                    ])->delete();
+
+                                Models\Common\Menu::query()
+                                    ->where([
+                                        'key' => 'ai_fall',
+                                    ])->delete();
+
+                                Models\Common\Menu::query()
+                                    ->where([
+                                        'key' => 'google_adsense',
+                                    ])->delete();
+
+                                Models\Common\Menu::query()
+                                    ->where([
+                                        'key' => 'ai_avatar_pro',
+                                    ])->delete();
+
                                 $apiIntegration = Models\Common\Menu::query()
                                     ->where([
                                         'key' => 'api_integration',
@@ -573,8 +656,26 @@ class InstallationHelper
                                     'parent_id' => $apiIntegration->id,
                                 ]);
 
+                                Models\Common\Menu::query()->where('key', 'admin_finance_plan')->update([
+                                    'label' => 'Pricing Plans',
+                                ]);
+
+                                $setting = Models\Common\Menu::query()
+                                    ->where([
+                                        'key' => 'settings',
+                                    ])->first();
+
+                                Models\Common\Menu::query()->where('key', 'ai_chat_models')->update([
+                                    'parent_id' => $setting->id,
+                                    'label'     => 'AI Models',
+                                ]);
+
+                                Models\Common\Menu::query()->where('key', 'api_integration_fal_ai')->update([
+                                    'label'     => 'Fal AI',
+                                ]);
+
                                 app(MenuService::class)->regenerate();
-                            } catch (\Exception $exception) {
+                            } catch (Exception $exception) {
                             }
                         },
                     ],
@@ -582,31 +683,73 @@ class InstallationHelper
             ],
             [
                 'table' => 'introductions',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => true,
-                        'callback' => function () {
+                        'callback'  => function () {
                             try {
                                 app(IntroductionSeeder::class)->run();
-                            } catch (\Exception $exception) {
+                            } catch (Exception $exception) {
                             }
                         },
                     ],
                 ],
             ],
             [
-                'table' => 'ai_models',
-                'sql' => [
+                'table' => 'permissions',
+                'sql'   => [
                     [
                         'condition' => true,
-                        'callback' => function () {
+                        'callback'  => function () {
                             try {
-                                $models = Models\AiModel::query()->get();
+                                app(PermissionSeeder::class)->run();
+                            } catch (Exception $exception) {
+                            }
+                        },
+                    ],
+                ],
+            ],
+            [
+                'table' => 'role_has_permissions',
+                'sql'   => [
+                    [
+                        'condition' => true,
+                        'callback'  => function () {
+                            try {
+                                app(AdminPermissionSeeder::class)->run();
+                            } catch (Exception $exception) {
+                            }
+                        },
+                    ],
+                ],
+            ],
+            [
+                'table' => 'roles',
+                'sql'   => [
+                    [
+                        'condition' => true,
+                        'callback'  => function () {
+                            try {
+                                app(RoleSeeder::class)->run();
+                            } catch (Exception $exception) {
+                            }
+                        },
+                    ],
+                ],
+            ],
+            [
+                'table' => 'entities',
+                'sql'   => [
+                    [
+                        'condition' => true,
+                        'callback'  => function () {
+                            try {
+                                $models = \App\Domains\Entity\Models\Entity::query()->get();
 
                                 foreach ($models as $model) {
                                     $model->update(['selected_title' => $model->getAttribute('title')]);
                                 }
-                            } catch (\Exception $exception) {
+                            } catch (Exception $exception) {
                             }
                         },
                     ],
@@ -614,16 +757,16 @@ class InstallationHelper
             ],
             [
                 'table' => 'frontend_sections_statuses_titles',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Schema::hasColumn('frontend_sections_statuses_titles', 'marquee_items'),
-                        'callback' => function () {
+                        'callback'  => function () {
                             try {
                                 // fill the column with the default value if it's empty
-                                Models\FrontendSectionsStatusses::query()->update([
+                                Models\Frontend\FrontendSectionsStatus::query()->update([
                                     'marquee_items' => 'Cold Email,Newsletter,Summarize,Product Description,Testimonial,Pick an outfit,Study Vocabulary, Create a workout plan,Transcribe my class notes,Create a pros and cons list,Morning Productivity Plan,Experience Tokyo like a local,Translate',
                                 ]);
-                            } catch (\Exception $exception) {
+                            } catch (Exception $exception) {
                             }
                         },
                     ],
@@ -631,47 +774,47 @@ class InstallationHelper
             ],
             [
                 'table' => 'advanced_features_section',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Models\Section\AdvancedFeaturesSection::query()->count() == 0,
-                        'callback' => function () {
+                        'callback'  => function () {
                             try {
                                 //default data
                                 $defaultData = [
                                     [
-                                        'title' => __('Article Wizard'),
+                                        'title'       => __('Article Wizard'),
                                         'description' => __('Create a social media post and schedule it to be published directly on Linkedin or X.'),
-                                        'image' => custom_theme_url('/assets/landing-page/advanced-feature-1.png'),
+                                        'image'       => custom_theme_url('/assets/landing-page/advanced-feature-1.png'),
                                     ],
                                     [
-                                        'title' => __('Intelligent AI Assistant'),
+                                        'title'       => __('Intelligent AI Assistant'),
                                         'description' => __('Create a social media post and schedule it to be published directly on Linkedin or X.'),
-                                        'image' => custom_theme_url('/assets/landing-page/advanced-feature-1.png'),
+                                        'image'       => custom_theme_url('/assets/landing-page/advanced-feature-1.png'),
                                     ],
                                     [
-                                        'title' => __('Publish on Social Media'),
+                                        'title'       => __('Publish on Social Media'),
                                         'description' => __('Create a social media post and schedule it to be published directly on Linkedin or X.'),
-                                        'image' => custom_theme_url('/assets/landing-page/advanced-feature-1.png'),
+                                        'image'       => custom_theme_url('/assets/landing-page/advanced-feature-1.png'),
                                     ],
                                     [
-                                        'title' => __('SEO Tool'),
+                                        'title'       => __('SEO Tool'),
                                         'description' => __('Create a social media post and schedule it to be published directly on Linkedin or X.'),
-                                        'image' => custom_theme_url('/assets/landing-page/advanced-feature-1.png'),
+                                        'image'       => custom_theme_url('/assets/landing-page/advanced-feature-1.png'),
                                     ],
                                     [
-                                        'title' => __('Real-Time Data'),
+                                        'title'       => __('Real-Time Data'),
                                         'description' => __('Create a social media post and schedule it to be published directly on Linkedin or X.'),
-                                        'image' => custom_theme_url('/assets/landing-page/advanced-feature-1.png'),
+                                        'image'       => custom_theme_url('/assets/landing-page/advanced-feature-1.png'),
                                     ],
                                     [
-                                        'title' => __('AI Photo Editor'),
+                                        'title'       => __('AI Photo Editor'),
                                         'description' => __('Create a social media post and schedule it to be published directly on Linkedin or X.'),
-                                        'image' => custom_theme_url('/assets/landing-page/advanced-feature-1.png'),
+                                        'image'       => custom_theme_url('/assets/landing-page/advanced-feature-1.png'),
                                     ],
                                 ];
                                 // fill the column with the default value if it's empty
                                 Models\Section\AdvancedFeaturesSection::query()->insert($defaultData);
-                            } catch (\Exception $exception) {
+                            } catch (Exception $exception) {
                             }
                         },
                     ],
@@ -679,10 +822,10 @@ class InstallationHelper
             ],
             [
                 'table' => 'comparison_section_items',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Models\Section\ComparisonSectionItems::query()->count() == 0,
-                        'callback' => function () {
+                        'callback'  => function () {
                             try {
                                 //default data
                                 $items = [
@@ -696,19 +839,18 @@ class InstallationHelper
                                 ];
                                 // fill the column with the default value if it's empty
                                 Models\Section\ComparisonSectionItems::query()->insert($items);
-                            } catch (\Exception $exception) {
+                            } catch (Exception $exception) {
                             }
                         },
                     ],
                 ],
             ],
-
             [
                 'table' => 'features_marquees',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Models\Section\FeaturesMarquee::query()->count() == 0,
-                        'callback' => function () {
+                        'callback'  => function () {
                             try {
                                 //default data
                                 $items = [
@@ -723,7 +865,7 @@ class InstallationHelper
                                 ];
                                 // fill the column with the default value if it's empty
                                 Models\Section\FeaturesMarquee::query()->insert($items);
-                            } catch (\Exception $exception) {
+                            } catch (Exception $exception) {
                             }
                         },
                     ],
@@ -731,10 +873,10 @@ class InstallationHelper
             ],
             [
                 'table' => 'footer_items',
-                'sql' => [
+                'sql'   => [
                     [
-                        'condition' => Models\Section\FooterItem::query()->count() == 0,
-                        'callback' => function () {
+                        'condition' => Models\Section\FooterItem::query()->count() === 0,
+                        'callback'  => function () {
                             try {
                                 $items = [
                                     ['item' => 'Premium Support 30-Day'],
@@ -745,7 +887,7 @@ class InstallationHelper
                                 ];
                                 // fill the column with the default value if it's empty
                                 Models\Section\FooterItem::query()->insert($items);
-                            } catch (\Exception $exception) {
+                            } catch (Exception $exception) {
                             }
                         },
                     ],
@@ -753,10 +895,10 @@ class InstallationHelper
             ],
             [
                 'table' => 'banner_bottom_texts',
-                'sql' => [
+                'sql'   => [
                     [
                         'condition' => Models\Section\BannerBottomText::query()->count() == 0,
-                        'callback' => function () {
+                        'callback'  => function () {
                             try {
                                 $items = [
                                     ['text' => 'No Credit Card Required'],
@@ -765,26 +907,93 @@ class InstallationHelper
                                 ];
                                 // fill the column with the default value if it's empty
                                 Models\Section\BannerBottomText::query()->insert($items);
-                            } catch (\Exception $exception) {
+                            } catch (Exception $exception) {
                             }
                         },
                     ],
                 ],
             ],
-			[
-				'table' => 'openai',
-				'sql' => [
-					[
-						'condition' => ! OpenAIGenerator::where('slug', 'ai_voice_isolator')->exists(),
-						'callback' => function () {
-							try {
-								app(VoiceIsolatorSeeder::class)->run();
-							} catch (\Exception $exception) {
-							}
-						},
-					],
-				],
-			],
+            [
+                'table' => 'plans',
+                'sql'   => [
+                    [
+                        'condition' => true,
+                        'callback'  => function () {
+                            Models\Plan::query()
+                                ->whereNull('plan_ai_tools')
+                                ->whereNull('plan_features')
+                                ->get()->map(callback: function ($plan) {
+                                    $plan_ai_tools = Arr::pluck(MenuService::planAiToolsMenu(), 'key');
+
+                                    $plan_features = Arr::pluck(MenuService::planFeatureMenu(), 'key');
+
+                                    $plan->update([
+                                        'plan_ai_tools' => $plan_ai_tools,
+                                        'plan_features' => $plan_features,
+                                    ]);
+                                });
+                        },
+                    ],
+                ],
+            ],
+            [
+                'table' => 'openai',
+                'sql'   => [
+                    [
+                        'condition' => ! OpenAIGenerator::where('slug', 'ai_voice_isolator')->exists(),
+                        'callback'  => function () {
+                            try {
+                                app(VoiceIsolatorSeeder::class)->run();
+                            } catch (Exception $exception) {
+                            }
+                        },
+                    ],
+                ],
+            ],
+
+            [
+                'table' => 'menus',
+                'sql'   => [
+                    [
+                        'condition' => Models\Common\Menu::query()->where('bolt_menu', true)->doesntExist(),
+                        'callback'  => function () {
+                            try {
+                                $middle_nav_urls = [
+                                    'dashboard' => [
+                                        'background' => '#9A6FFD',
+                                        'foreground' => '#fff',
+                                    ],
+                                    'ai_writer' => [
+                                        'background' => '#468EA6',
+                                        'foreground' => '#fff',
+                                    ],
+                                    'finance' => [
+                                        'background' => '#3569F5',
+                                        'foreground' => '#fff',
+                                    ],
+                                    'ai_editor' => [
+                                        'background' => '#E29CB6',
+                                        'foreground' => '#fff',
+                                    ],
+                                ];
+
+                                foreach ($middle_nav_urls as $key => $value) {
+                                    Models\Common\Menu::query()
+                                        ->where('key', $key)
+                                        ->update([
+                                            'bolt_menu'       => true,
+                                            'bolt_background' => $value['background'],
+                                            'bolt_foreground' => $value['foreground'],
+                                        ]);
+                                }
+
+                                app(MenuService::class)->regenerate();
+                            } catch (Exception $exception) {
+                            }
+                        },
+                    ],
+                ],
+            ],
         ];
     }
 }

@@ -13,6 +13,14 @@
             {{ __('Browse Add-ons') }}
         </x-button>
     </div>
+    <x-button
+            class="relative ms-2"
+            variant="ghost-shadow"
+            href="{{ route('dashboard.admin.marketplace.cart') }}">
+        <x-tabler-shopping-cart class="size-4"/>
+        {{ __('Cart') }}
+        <small id="itemCount" class="bg-red-500 text-white ps-2 pe-2 absolute top-[-10px] right-[3px] rounded-[50%] border border-red-500">{{ count(is_array($cart) ? $cart : []) }}</small>
+    </x-button>
 @endsection
 @section('content')
     <div class="py-10">
@@ -95,7 +103,9 @@
                                 </span>
                             </x-button>
 
+
                             <x-button
+                                data-folder="{{ $item['extension_folder'] }}"
                                 data-name="{{ $item['slug'] }}"
                                 @class([
                                     'size-14 btn_install group',

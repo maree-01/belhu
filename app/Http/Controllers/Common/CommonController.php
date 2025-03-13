@@ -4,11 +4,12 @@ namespace App\Http\Controllers\Common;
 
 use App\Http\Controllers\Controller;
 use App\Models\SettingTwo;
+use Exception;
+use Illuminate\Http\File;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Illuminate\Http\File;
 use Mcamara\LaravelLocalization\Facades\LaravelLocalization;
 
 class CommonController extends Controller
@@ -17,7 +18,7 @@ class CommonController extends Controller
     {
         $currentDebugValue = env('APP_DEBUG', false);
 
-        $newDebugValue = !$currentDebugValue;
+        $newDebugValue = ! $currentDebugValue;
 
         $envContent = file_get_contents(base_path('.env'));
 
@@ -29,6 +30,7 @@ class CommonController extends Controller
 
         return redirect()->back()->with('message', 'Debug mode updated successfully.');
     }
+
     public function regenerate()
     {
         Artisan::call('elseyyid:location:install');
@@ -38,7 +40,7 @@ class CommonController extends Controller
 
     public function setLocale(Request $request)
     {
-        $settings_two = \App\Models\SettingTwo::first();
+        $settings_two = \App\Models\SettingTwo::getCache();
         $settings_two->languages_default = $request->setLocale;
         $settings_two->save();
         LaravelLocalization::setLocale($request->setLocale);
@@ -48,20 +50,25 @@ class CommonController extends Controller
 
     public function translationsLangUpdateAll(Request $request)
     {
-        $json = json_decode($request->data, true);
-        $column_name = $request->lang;
+        ini_set('max_input_vars', -1);
+
+        $json = $request->get('json');
+
+        $column_name = $request->get('lang');
+
         foreach ($json as $code => $column_value) {
             $code++;
             if (! empty($column_value)) {
                 $test = \Elseyyid\LaravelJsonLocationsManager\Models\Strings::where('code', '=', $code)->update([$column_name => $column_value]);
             }
         }
+
         $lang = $column_name;
         $list = \Elseyyid\LaravelJsonLocationsManager\Models\Strings::pluck($lang, 'en');
 
         $new_json = json_encode_prettify($list);
         $filesystem = new \Illuminate\Filesystem\Filesystem;
-        $filesystem->put(base_path('lang/'.$lang.'.json'), $new_json);
+        $filesystem->put(base_path('lang/' . $lang . '.json'), $new_json);
 
         if ($column_name == 'edit') {
             // Read existing values from en.json
@@ -91,7 +98,7 @@ class CommonController extends Controller
 
     public function translationsLangSave(Request $request)
     {
-        $settings_two = \App\Models\SettingTwo::first();
+        $settings_two = \App\Models\SettingTwo::getCache();
         $codes = explode(',', $settings_two->languages);
 
         if ($request->state) {
@@ -117,31 +124,31 @@ class CommonController extends Controller
 
         foreach ($images ?? [] as $image) {
             $base64Image = $image;
-            $nameOfImage = Str::random(12).'.png';
+            $nameOfImage = Str::random(12) . '.png';
 
             //save file on local storage or aws s3
             Storage::disk('public')->put($nameOfImage, base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $base64Image)));
-            $path = '/uploads/'.$nameOfImage;
+            $path = '/uploads/' . $nameOfImage;
 
             $uploadedFile = new File(substr($path, 1));
 
-            if (SettingTwo::first()->ai_image_storage == 's3') {
+            if (SettingTwo::getCache()->ai_image_storage == 's3') {
                 try {
                     $aws_path = Storage::disk('s3')->put('', $uploadedFile);
                     unlink(substr($path, 1));
                     $path = Storage::disk('s3')->url($aws_path);
-                } catch (\Exception $e) {
-                    return response()->json(['status' => 'error', 'message' => 'AWS Error - '.$e->getMessage()]);
+                } catch (Exception $e) {
+                    return response()->json(['status' => 'error', 'message' => 'AWS Error - ' . $e->getMessage()]);
                 }
             }
 
-            if (SettingTwo::first()->ai_image_storage == 'r2') {
+            if (SettingTwo::getCache()->ai_image_storage == 'r2') {
                 try {
                     $aws_path = Storage::disk('r2')->put('', $uploadedFile);
                     unlink(substr($path, 1));
                     $path = Storage::disk('r2')->url($aws_path);
-                } catch (\Exception $e) {
-                    return response()->json(["status" => "error", "message" => "AWS Error - " . $e->getMessage()]);
+                } catch (Exception $e) {
+                    return response()->json(['status' => 'error', 'message' => 'AWS Error - ' . $e->getMessage()]);
                 }
             }
 
@@ -158,33 +165,32 @@ class CommonController extends Controller
 
         $imageContent = file_get_contents($image->getRealPath());
         $base64Image = base64_encode($imageContent);
-        $nameOfImage = Str::random(12).'.png';
+        $nameOfImage = Str::random(12) . '.png';
 
         //save file on local storage or aws s3
         Storage::disk('public')->put($nameOfImage, base64_decode($base64Image));
-        $path = '/uploads/'.$nameOfImage;
+        $path = '/uploads/' . $nameOfImage;
         $uploadedFile = new File(substr($path, 1));
 
-        if (SettingTwo::first()->ai_image_storage == 's3') {
+        if (SettingTwo::getCache()->ai_image_storage == 's3') {
             try {
                 $aws_path = Storage::disk('s3')->put('', $uploadedFile);
                 unlink(substr($path, 1));
                 $path = Storage::disk('s3')->url($aws_path);
-            } catch (\Exception $e) {
-                return response()->json(['status' => 'error', 'message' => 'AWS Error - '.$e->getMessage()]);
+            } catch (Exception $e) {
+                return response()->json(['status' => 'error', 'message' => 'AWS Error - ' . $e->getMessage()]);
             }
         }
 
-        if (SettingTwo::first()->ai_image_storage == 'r2') {
+        if (SettingTwo::getCache()->ai_image_storage == 'r2') {
             try {
                 $aws_path = Storage::disk('r2')->put('', $uploadedFile);
                 unlink(substr($path, 1));
                 $path = Storage::disk('r2')->url($aws_path);
-            } catch (\Exception $e) {
-                return response()->json(["status" => "error", "message" => "AWS Error - " . $e->getMessage()]);
+            } catch (Exception $e) {
+                return response()->json(['status' => 'error', 'message' => 'AWS Error - ' . $e->getMessage()]);
             }
         }
-
 
         return response()->json(['path' => "$path"]);
     }

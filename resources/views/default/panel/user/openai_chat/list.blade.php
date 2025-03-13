@@ -76,12 +76,14 @@
 
 @push('script')
     <script>
-        // var favData = @json($favData);
-        var message = @json($message);
-
-        if (message == true) {
+        let message = @json($message);
+        if (message === true) {
             toastr.warning("{{ __('Cannot access premium plan') }}");
         }
+		let stream_type = '{!! $settings_two->openai_default_stream_server !!}';
+        @if (setting('default_ai_engine', 'openai') == 'anthropic')
+		    const stream_type = 'backend';
+        @endif
     </script>
     <script src="{{ custom_theme_url('/assets/js/panel/openai_chat.js') }}"></script>
 @endpush

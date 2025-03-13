@@ -5,6 +5,27 @@ $(document).ready(function () {
 	var strFilter = '';
 	var isInstalling = false;
 
+	$('[data-toogle="cart"]').on('click', function () {
+		var url = $(this).data('url');
+
+		$.get(url, function (data) {
+
+
+			var icon = $('#' + data.iconId);
+
+			if (icon.hasClass('text-gray-500')) {
+				icon.removeClass('text-gray-500');
+				icon.addClass('text-green-500');
+			} else {
+				icon.removeClass('text-green-500');
+				icon.addClass('text-gray-500');
+			}
+
+			$('#itemCount').html(data.itemCount);
+			toastr.success(data.message);
+		});
+	});
+
 	function updateList() {
 		$('.lqd-extension').each((index, element) => {
 			if (addonFilter == 'All') {
@@ -84,6 +105,7 @@ $(document).ready(function () {
 		let btn = $(this);
 
 		btn.addClass('lqd-is-busy');
+
 		btn.attr('disable', true);
 
 		let formData = new FormData();
@@ -114,7 +136,6 @@ $(document).ready(function () {
 				Alpine.store('appLoadingIndicator').hide();
 			}
 		});
-
 	});
 
 	$('.btn_installed').on('click', function () {

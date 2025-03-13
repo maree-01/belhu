@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('settings_two', function (Blueprint $table) {
-            $table->string("stablediffusion_bedrock_model")->default("stability.stable-diffusion-xl-v1");
+            $table->string('stablediffusion_bedrock_model')->default('stability.stable-diffusion-xl-v1');
         });
     }
 

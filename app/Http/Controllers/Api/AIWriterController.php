@@ -2,50 +2,53 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Entity\Enums\EntityEnum;
+use App\Domains\Entity\Facades\Entity;
+use App\Helpers\Classes\Helper;
 use App\Http\Controllers\Controller;
 use App\Models\OpenAIGenerator;
-use App\Models\PaymentPlans;
+use App\Models\Plan;
 use App\Models\Setting;
 use App\Models\SettingTwo;
 use App\Models\UserFavorite;
 use App\Models\UserOpenai;
+use App\Services\Bedrock\BedrockRuntimeService;
+use Exception;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use OpenAI;
 use OpenAI\Laravel\Facades\OpenAI as FacadesOpenAI;
 use Symfony\Component\HttpFoundation\File\File;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AIWriterController extends Controller
 {
+    protected BedrockRuntimeService $bedrockService;
+
     protected $client;
 
     protected $settings;
 
     protected $settings_two;
 
-    const STABLEDIFFUSION = 'stablediffusion';
-
-    const STORAGE_S3 = 's3';
-
-    const STORAGE_LOCAL = 'public';
-
-    public function __construct()
+    public function __construct(BedrockRuntimeService $bedrockService)
     {
         //Settings
-        $this->settings = Setting::first();
-        $this->settings_two = SettingTwo::first();
-        // Fetch the Site Settings object with openai_api_secret
-        if ($this->settings?->user_api_option) {
-            $apiKeys = explode(',', auth()->user()?->api_keys);
-        } else {
-            $apiKeys = explode(',', $this->settings?->openai_api_secret);
-        }
-        $apiKey = $apiKeys[array_rand($apiKeys)];
-        config(['openai.api_key' => $apiKey]);
+        $this->settings = Setting::getCache();
+        $this->settings_two = SettingTwo::getCache();
         set_time_limit(120);
+
+        $this->bedrockService = $bedrockService;
+        $this->middleware(function (Request $request, $next) {
+            Helper::setOpenAiKey();
+
+            return $next($request);
+        });
     }
 
     /**
@@ -98,10 +101,10 @@ class AIWriterController extends Controller
             $userOpenai = UserOpenai::where('user_id', Auth::id())->where('openai_id', $openai->id)->orderBy('created_at', 'desc')->get();
 
             return response()->json([
-                'openai' => $openai,
+                'openai'     => $openai,
                 'userOpenai' => $userOpenai,
             ], 200);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json(['error' => __('Resource not found')], 404);
         }
     }
@@ -155,7 +158,7 @@ class AIWriterController extends Controller
             return response()->json([
                 'openai' => $openai,
             ], 200);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json(['error' => __('Resource not found')], 404);
         }
     }
@@ -228,28 +231,26 @@ class AIWriterController extends Controller
      *         ),
      *     ),
      * )
+     *
+     * @throws Exception
      */
-    public function streamedTextOutput(Request $request)
+    public function streamedTextOutput(Request $request): StreamedResponse|JsonResponse
     {
-        if ($request->message_id == null) {
+        if ($request->message_id === null) {
             return response()->json(['error' => __('Message ID is required')], 412);
         }
-        if ($request->creativity == null) {
+        if ($request->creativity === null) {
             return response()->json(['error' => __('Creativity is required')], 412);
         }
-        if ($request->maximum_length == null) {
+        if ($request->maximum_length === null) {
             return response()->json(['error' => __('Max length is required')], 412);
         }
-        if ($request->number_of_results == null) {
+        if ($request->number_of_results === null) {
             return response()->json(['error' => __('Number of results is required')], 412);
         }
 
-        $user = Auth::user();
-        if ($user->remaining_words != -1) {
-            if ($user->remaining_words <= 0) {
-                return response()->json(['error' => __('You have no remaining words. Please upgrade your plan.')], 412);
-            }
-        }
+        $driver = Entity::driver();
+        $driver->redirectIfNoCreditBalance();
 
         $settings = $this->settings;
         $message_id = $request->message_id;
@@ -261,39 +262,35 @@ class AIWriterController extends Controller
         $maximum_length = $request->maximum_length;
         $number_of_results = $request->number_of_results;
 
-        return Response::stream(function () use ($prompt, $message_id, $settings, $creativity, $maximum_length, $number_of_results, $youtube_url, $rss_image) {
+        return Response::stream(function () use ($driver, $prompt, $message_id, $creativity, $maximum_length, $number_of_results, $youtube_url, $rss_image) {
             try {
-                if ($settings->openai_default_model == 'text-davinci-003') {
+                if ($driver->enum() === EntityEnum::TEXT_DAVINCI_003) {
                     $stream = FacadesOpenAI::completions()->createStreamed([
-                        'model' => $this->settings->openai_default_model,
-                        'prompt' => $prompt,
+                        'model'       => $driver->enum()->value,
+                        'prompt'      => $prompt,
                         'temperature' => (int) $creativity,
-                        'max_tokens' => (int) $maximum_length,
-                        'n' => (int) $number_of_results,
+                        'max_tokens'  => (int) $maximum_length,
+                        'n'           => (int) $number_of_results,
                     ]);
-
                 } else {
                     if ((int) $number_of_results > 1) {
-                        $prompt = $prompt.' number of results should be '.(int) $number_of_results;
+                        $prompt .= ' number of results should be ' . (int) $number_of_results;
                     }
                     $stream = FacadesOpenAI::chat()->createStreamed([
-                        'model' => $this->settings->openai_default_model,
+                        'model'    => $driver->enum()->value,
                         'messages' => [
                             ['role' => 'user', 'content' => $prompt],
                         ],
                     ]);
                 }
-            } catch (\Exception $exception) {
-                $messageError = 'Error from API call. Please try again. If error persists again, please contact the system administrator with this message '.$exception->getMessage();
-                //echo 'data: {"error": "'.$messageError.'"}';
+            } catch (Exception $exception) {
+                $messageError = 'Error from API call. Please try again. If error persists again, please contact the system administrator with this message ' . $exception->getMessage();
+                Log::error($messageError);
                 echo "error: $messageError";  // defined error: to handle error in frontend
                 echo "\n\n";
-                //ob_flush();
                 flush();
-                // echo 'data: {"status": "DONE"}';
                 echo 'data: [DONE]';
                 echo "\n\n";
-                //ob_flush();
                 flush();
                 usleep(50000);
                 $stream = []; // empty array to prevent further processing and $stream is undefined error
@@ -302,7 +299,6 @@ class AIWriterController extends Controller
             $total_used_tokens = 0;
             $output = '';
             $responsedText = '';
-
             // Youtube Thumbnail
             if ($youtube_url) {
                 $parsedUrl = parse_url($youtube_url);
@@ -313,22 +309,19 @@ class AIWriterController extends Controller
                     }
                 }
                 $video_thumbnail = sprintf('https://img.youtube.com/vi/%s/maxresdefault.jpg', $video_id);
-
                 $contents = file_get_contents($video_thumbnail);
                 $nameOfImage = "youtube-$video_id.jpg";
-
                 //save file on local storage or aws s3
                 Storage::disk('public')->put($nameOfImage, $contents);
-                $path = '/uploads/'.$nameOfImage;
+                $path = '/uploads/' . $nameOfImage;
                 $uploadedFile = new File(substr($path, 1));
-
-                if (SettingTwo::first()->ai_image_storage == 's3') {
+                if ($this->settings_two->ai_image_storage === 's3') {
                     try {
                         $aws_path = Storage::disk('s3')->put('', $uploadedFile);
                         unlink(substr($path, 1));
                         $path = Storage::disk('s3')->url($aws_path);
-                    } catch (\Exception $e) {
-                        return response()->json(['status' => 'error', 'message' => 'AWS Error - '.$e->getMessage()]);
+                    } catch (Exception $e) {
+                        return response()->json(['status' => 'error', 'message' => 'AWS Error - ' . $e->getMessage()]);
                     }
                 }
 
@@ -344,27 +337,22 @@ class AIWriterController extends Controller
 
             // RSS Thumbnail
             if ($rss_image) {
-
                 $contents = file_get_contents($rss_image);
-                $nameOfImage = 'rss-'.Str::random(12).'.jpg';
-
+                $nameOfImage = 'rss-' . Str::random(12) . '.jpg';
                 //save file on local storage or aws s3
                 Storage::disk('public')->put($nameOfImage, $contents);
-                $path = '/uploads/'.$nameOfImage;
+                $path = '/uploads/' . $nameOfImage;
                 $uploadedFile = new File(substr($path, 1));
-
-                if (SettingTwo::first()->ai_image_storage == 's3') {
+                if ($this->settings_two->ai_image_storage === 's3') {
                     try {
                         $aws_path = Storage::disk('s3')->put('', $uploadedFile);
                         unlink(substr($path, 1));
                         $path = Storage::disk('s3')->url($aws_path);
-                    } catch (\Exception $e) {
-                        return response()->json(['status' => 'error', 'message' => 'AWS Error - '.$e->getMessage()]);
+                    } catch (Exception $e) {
+                        return response()->json(['status' => 'error', 'message' => 'AWS Error - ' . $e->getMessage()]);
                     }
                 }
-
                 $output = "<img src=\"$path\" style=\"width:100%\"><br><br>";
-
                 $total_used_tokens += 1;
                 $needChars = 6000 - 1;
                 echo $output;
@@ -372,22 +360,19 @@ class AIWriterController extends Controller
                 flush();
                 usleep(500);
             }
-
             // Disable output buffering
             while (ob_get_level() > 0) {
                 ob_end_flush();
             }
             ob_start();
-
             foreach ($stream as $response) {
-                if ($settings->openai_default_model == 'text-davinci-003') {
+                if ($driver->enum() === EntityEnum::TEXT_DAVINCI_003) {
                     if (isset($response->choices[0]->text)) {
                         $message = $response->choices[0]->text;
                         $messageFix = str_replace(["\r\n", "\r", "\n"], '<br/>', $message);
                         $output .= $messageFix;
                         $responsedText .= $message;
                         $total_used_tokens += countWords($messageFix);
-
                         echo $messageFix;
                         echo PHP_EOL;
                         ob_flush();
@@ -395,14 +380,12 @@ class AIWriterController extends Controller
                         usleep(100); //500
                     }
                 } else {
-
                     if (isset($response['choices'][0]['delta']['content'])) {
                         $message = $response['choices'][0]['delta']['content'];
                         $messageFix = str_replace(["\r\n", "\r", "\n"], '<br/>', $message);
                         $output .= $messageFix;
                         $responsedText .= $message;
                         $total_used_tokens += countWords($messageFix);
-
                         echo $messageFix;
                         echo PHP_EOL;
                         ob_flush();
@@ -423,11 +406,7 @@ class AIWriterController extends Controller
             $message->credits = $total_used_tokens;
             $message->words = 0;
             $message->save();
-
-            $user = Auth::user();
-
-            userCreditDecreaseForWord($user, $total_used_tokens, $this->settings->openai_default_model);
-
+            $driver->input($response)->calculateCredit()->decreaseCredit();
             // echo 'data: {"status": "DONE"}';
             echo "\n\n";
             echo 'data: [DONE]';
@@ -435,9 +414,9 @@ class AIWriterController extends Controller
             flush();
             usleep(50000);
         }, 200, [
-            'Cache-Control' => 'no-cache',
+            'Cache-Control'     => 'no-cache',
             'X-Accel-Buffering' => 'no',
-            'Content-Type' => 'text/event-stream',
+            'Content-Type'      => 'text/event-stream',
         ]);
     }
 
@@ -517,7 +496,7 @@ class AIWriterController extends Controller
             ->get();
 
         return response()->json([
-            'images' => $images,
+            'images'  => $images,
             'hasMore' => $images->count() === $limit,
         ]);
     }
@@ -575,6 +554,8 @@ class AIWriterController extends Controller
      *     ),
      *     security={{ "passport": {} }},
      * )
+     *
+     * @throws Exception
      */
     public function lowGenerateSave(Request $request)
     {
@@ -587,10 +568,9 @@ class AIWriterController extends Controller
         $entry->response = $response;
         $entry->output = $response;
         $entry->save();
-
-        $user = Auth::user();
-
-        userCreditDecreaseForWord($user, $total_user_tokens, $this->settings->openai_default_model);
+        $driver = Entity::driver();
+        $driver->redirectIfNoCreditBalance();
+        $driver->input($response)->calculateCredit()->decreaseCredit();
 
         return response()->json(['status' => 'Data saved successfully.']);
     }
@@ -641,7 +621,7 @@ class AIWriterController extends Controller
         }
 
         if ($planId != '') {
-            $plan = PaymentPlans::where([['id', '=', $planId]])->first();
+            $plan = Plan::where([['id', '=', $planId]])->first();
 
             if ($plan->plan_type == 'All' || $plan->plan_type == 'all' || $plan->plan_type == 'premium' || $plan->plan_type == 'Premium') {
                 $aiList = OpenAIGenerator::where([['type', '=', 'text']])->get();
@@ -747,7 +727,7 @@ class AIWriterController extends Controller
 
         $userId = Auth::user()->id;
 
-        $favorite = new UserFavorite();
+        $favorite = new UserFavorite;
         $favorite->user_id = $userId;
         $favorite->openai_id = $openAi->id;
         $favorite->save();

@@ -14,7 +14,7 @@
                     class="table-sort"
                     data-sort="sort-group"
                 >
-                    {{ __('Group') }}
+                    {{ __('Role') }}
                 </button>
             </th>
             <th>
@@ -74,16 +74,21 @@
                         {{ $user->fullName() }}
                     </td>
                     <td class="sort-group">
-                        {{ $user->type }}
+                        {{ $user->type->label() }}
                     </td>
+                    @php
+                        $userWordModel = \App\Domains\Entity\EntityStats::word()->forUser($user);
+                        $userImageModel = \App\Domains\Entity\EntityStats::image()->forUser($user);
+                    @endphp
                     <td class="sort-remaining-words">
-                        {{ $user->remaining_words }}
+
+                        {{ $userWordModel->checkIfThereUnlimited() ? __('Unlimited') : $userWordModel->totalCredits() }}
                     </td>
                     <td class="sort-remaining-images">
-                        {{ $user->remaining_images }}
+                        {{ $userImageModel->checkIfThereUnlimited() ? __('Unlimited') : $userImageModel->totalCredits() }}
                     </td>
                     <td class="sort-country">
-                        {{ $user->country }}
+                        {{ $user->country ?? __('Unknown') }}
                     </td>
                     <td class="sort-status">
                         {{ $user->status == 1 ? __('Active') : __('Passive') }}
@@ -99,7 +104,7 @@
                             {{ date('H:i:s', strtotime($user->created_at)) }}
                         </p>
                     </td>
-                    <td class="whitespace-nowrap !text-end">
+                    <td class="whitespace-nowrap !text-center">
                         <x-button
                             class="size-9"
                             hover-variant="primary"
@@ -132,7 +137,7 @@
                             <x-tabler-x class="size-4" />
                         </x-button>
                     </td>
-                    @includeIf('panel.admin.settings.particles.affiliate-setting')
+                    @includeFirst(['affilate::affiliate-setting', 'panel.admin.settings.particles.affiliate-setting', 'vendor.empty'])
                 </tr>
             @empty
                 <tr>

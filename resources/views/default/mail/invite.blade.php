@@ -441,9 +441,10 @@
 
         <div class="content">
 
-            <div class="content-head">
+            <div class="content-head" style="background-color: transparent;">
                 <img
                     src="{{ $settings->site_url }}/images/mail/invite-head.jpg"
+                    style="background-color: transparent;"
                     alt="Invitation"
                     width="1144"
                     height="564"

@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('settings_two', function (Blueprint $table) {
             $table->string('elevenlabs_api_key')->nullable();
-            $table->boolean('feature_tts_google')->default(true);
+            $table->boolean('feature_tts_google')->default(false);
             $table->boolean('feature_tts_openai')->default(true);
             $table->boolean('feature_tts_elevenlabs')->default(false);
         });
@@ -25,10 +25,12 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('settings_two', function (Blueprint $table) {
-            $table->dropColumn('elevenlabs_api_key');
-            $table->dropColumn('feature_tts_google');
-            $table->dropColumn('feature_tts_openai');
-            $table->dropColumn('feature_tts_elevenlabs');
+            $table->dropColumn([
+                'elevenlabs_api_key',
+                'feature_tts_google',
+                'feature_tts_openai',
+                'feature_tts_elevenlabs',
+            ]);
         });
     }
 };

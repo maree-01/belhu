@@ -4,6 +4,7 @@ namespace App\View\Components;
 
 use Closure;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Collection;
 use Illuminate\View\Component;
 
 class InfoTooltip extends Component
@@ -12,9 +13,10 @@ class InfoTooltip extends Component
      * Create a new component instance.
      */
     public function __construct(
-		public string $text = ''
-	)
-    {
+        public string $text = '',
+        public string $anchor = 'bottom',
+        public ?Collection $drivers = null,
+    ) {
         //
     }
 

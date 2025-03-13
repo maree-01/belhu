@@ -18,10 +18,7 @@
                         {{ __('Remaining Credits') }}
                     </h5>
 
-                    <x-remaining-credit
-                        class="flex-col-reverse text-xs"
-                        style="inline"
-                    />
+                    <x-credit-list />
                 </x-card>
 
                 <x-card
@@ -202,6 +199,7 @@
     <script src="{{ custom_theme_url('/assets/libs/turndown.js') }}"></script>
     <script src="{{ custom_theme_url('/assets/libs/tinymce/tinymce.min.js') }}"></script>
     <script src="{{ custom_theme_url('/assets/js/panel/tinymce-theme-handler.js') }}"></script>
+    <script src="{{ custom_theme_url('/assets/js/format-string.js') }}"></script>
     <script src="{{ custom_theme_url('/assets/js/panel/openai_generator_workbook.js') }}"></script>
     <script src="{{ custom_theme_url('/assets/libs/wavesurfer/wavesurfer.js') }}"></script>
     <script>

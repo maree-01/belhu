@@ -113,16 +113,16 @@
                 this.activeItemId = data.id;
                 videoItem = document.querySelector(`.lqd-modal-fig > video`);
                 currentVideoItem = document.querySelector(`.lqd-modal-fig > video > source`);
-        
+
                 const currenturl = window.location.href;
                 const server = currenturl.split('/')[0];
                 const delete_url = `${server}/dashboard/user/openai/documents/delete/image/${data.slug}`;
                 deleteVideoBtn = document.querySelector(`.lqd-modal-img-content .delete`);
                 deleteVideoBtn.href = delete_url;
-        
+
                 currentVideoItem.src = data.output;
                 videoItem.load();
-        
+
             },
             prevItem() {
                 const currentEl = document.querySelector(`.video-result[data-id='${this.activeItemId}']`);
@@ -387,6 +387,7 @@
                     >
                         <x-tabler-player-play-filled class="size-4" />
                     </x-button>
+
                     <x-button
                         class="lqd-video-result-download size-9 rounded-full bg-background text-foreground hover:bg-primary hover:text-primary-foreground"
                         size="none"
@@ -491,19 +492,21 @@
             let loadingQueue = [];
 
             const imageContainer = document.querySelector('.video-results');
-            const loadMoreTrigger = document.querySelector('.lqd-load-more-trigger');
             const imageResultTemplate = document.querySelector('#video_result');
+            const loadMoreTrigger = document.querySelector('.lqd-load-more-trigger');
             const loadMoreObserver = new IntersectionObserver(([entry], observer) => {
                 if (entry.isIntersecting) {
                     if (loadMoreTrigger.classList.contains('lqd-is-loading')) return;
                     createSkeleton(imageResultTemplate, nextCount);
-                    lazyLoadImages()
+                    lazyLoadImages();
                 }
             }, {
                 threshold: [1]
             });
 
-            loadMoreObserver.observe(loadMoreTrigger);
+            if (loadMoreTrigger) { // Check if the element exists
+                loadMoreObserver.observe(loadMoreTrigger);
+            }
 
             function createSkeleton(template, limit = 5) {
                 const skeletonTemplates = [];
